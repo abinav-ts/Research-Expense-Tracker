@@ -1,0 +1,23 @@
+/* ExpRes brand tokens. The only place colours and font stacks are defined for the app UI.
+   (The logo SVG files embed their own colours.) See brand/BRAND.md and specs/07-branding.md. */
+:root {
+  /* colour */
+  --ex-ink: #0E2A3B;            /* text, strokes, dark ground */
+  --ex-ink-soft: #4B6272;       /* secondary text */
+  --ex-breeze: #2BB3A9;         /* graphic only: streaks, progress (2.6:1 on white, never text) */
+  --ex-breeze-deep: #17706B;    /* links, healthy state, text */
+  --ex-rupee: #D96F00;          /* graphic only: logo rupee on light */
+  --ex-rupee-bright: #FFB020;   /* logo rupee on dark */
+  --ex-ground: #F5F8F7;         /* page background */
+  --ex-surface: #FFFFFF;        /* cards */
+  --ex-line: #D7E1DF;          /* borders, dividers */
+  --ex-on-dark: #EAF4F3;
+  --ex-on-dark-muted: #BFD3D8;
+  /* balance states (text on white) */
+  --ex-state-healthy: #17706B;  /* 5.9:1 */
+  --ex-state-low: #A85500;      /* 5.3:1 */
+  --ex-state-over: #B42318;     /* 6.6:1 */
+  /* type: families registered by the self-hosted Fontsource packages */
+  --ex-font-display: 'Bricolage Grotesque Variable', 'Trebuchet MS', system-ui, sans-serif;
+  --ex-font-ui: 'Inter Variable', system-ui, 'Segoe UI', sans-serif;
+}
