@@ -1,0 +1,47 @@
+/* Tailwind theme generated from the brand tokens: the default palette is removed, only brand colours exist.
+   No colour or font literals here; everything is a var(--ex-*) from brand/tokens.css. */
+@import 'tailwindcss';
+@import '../../../brand/tokens.css';
+@import './fonts.css';
+
+@theme {
+  --color-*: initial;
+  --color-ink: var(--ex-ink);
+  --color-ink-soft: var(--ex-ink-soft);
+  --color-breeze: var(--ex-breeze);
+  --color-breeze-deep: var(--ex-breeze-deep);
+  --color-rupee: var(--ex-rupee);
+  --color-rupee-bright: var(--ex-rupee-bright);
+  --color-ground: var(--ex-ground);
+  --color-surface: var(--ex-surface);
+  --color-line: var(--ex-line);
+  --color-on-dark: var(--ex-on-dark);
+  --color-on-dark-muted: var(--ex-on-dark-muted);
+  --color-state-healthy: var(--ex-state-healthy);
+  --color-state-low: var(--ex-state-low);
+  --color-state-over: var(--ex-state-over);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-*: initial;
+  --font-display: var(--ex-font-display);
+  --font-sans: var(--ex-font-ui);
+}
+
+@layer base {
+  html {
+    font-family: var(--ex-font-ui);
+    background-color: var(--ex-ground);
+    color: var(--ex-ink);
+  }
+  :focus-visible {
+    outline: 3px solid var(--ex-breeze-deep);
+    outline-offset: 2px;
+  }
+}
+
+/* Amounts: Inter with tabular figures (REQ-BRAND-02). */
+.amount {
+  font-family: var(--ex-font-ui);
+  font-variant-numeric: tabular-nums;
+}

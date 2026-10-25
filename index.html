@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="%THEME_COLOR%" />
+    <title>ExpRes</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/logo-mark.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/brand/tokens.css" />
+    <!-- Loading screen (REQ-BRAND-04): inline so it paints before the JS bundle. Appears only if boot takes > 300 ms. -->
+    <style>
+      #ex-loading {
+        position: fixed; inset: 0; z-index: 50;
+        display: flex; align-items: center; justify-content: center; text-align: center;
+        background: var(--ex-ink); color: var(--ex-on-dark);
+        opacity: 0; animation: ex-show 0s linear 300ms forwards;
+        transition: opacity 150ms ease-out;
+      }
+      #ex-loading.ex-leaving { animation: none; opacity: 0; }
+      #ex-loading .ex-loading-mark { width: 144px; height: auto; display: block; margin: 0 auto 16px; }
+      #ex-loading .ex-loading-word {
+        margin: 0; font: 500 40px/44px var(--ex-font-display); letter-spacing: -0.035em;
+      }
+      #ex-loading .ex-loading-word b { font-weight: 800; }
+      #ex-loading .ex-loading-slogan { margin: 8px 16px 0; font: 400 16px/24px var(--ex-font-ui); color: var(--ex-on-dark-muted); }
+      #ex-loading .ex-sr {
+        position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+      }
+      @keyframes ex-show { to { opacity: 1; } }
+      @keyframes ex-draw { 0% { stroke-dashoffset: 320; } 60%, 100% { stroke-dashoffset: 0; } }
+      @keyframes ex-glide { 0% { translate: -16px 0; opacity: 0; } 50%, 100% { translate: 0 0; opacity: 1; } }
+      @media (prefers-reduced-motion: no-preference) {
+        /* Mark paths in order: paper, fold, text lines, streaks; the <g> is the rupee. */
+        #ex-loading .ex-loading-mark > path:nth-of-type(4) {
+          stroke-dasharray: 320; animation: ex-draw 1.6s ease-out infinite;
+        }
+        #ex-loading .ex-loading-mark > g { animation: ex-glide 1.6s ease-out infinite; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ex-loading" role="status">
+      <div>
+        <!--brand:loading-mark-->
+        <p class="ex-loading-word" aria-hidden="true">Exp<b>Res</b></p>
+        <p class="ex-loading-slogan">Breeze through grant-handling grunt work</p>
+        <span class="ex-sr">Loading ExpRes</span>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/client/main.tsx"></script>
+  </body>
+</html>
