@@ -81,6 +81,25 @@ test.describe('REQ-CAP-13: pasted SMS text', () => {
   });
 });
 
+test.describe('REQ-CAP-13: the owner\'s own SMS format', () => {
+  test('REQ-CAP-13: "Rs 2399 spent@ ABDUSROLLS on 25OCT26 …" fills amount, date, payee and reference, drops the balance, and warns the date is outside the trip', async ({ page }) => {
+    await withTrip(page); // trip is 10–14 Nov 2026
+    await pasteText(page, 'Rs 2399 spent@ ABDUSROLLS on 25OCT26 12:59 Bal Rs.123456 Ref 34567');
+    await page.getByRole('link', { name: 'Review' }).click();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('2399');
+    await expect(page.getByLabel('Date')).toHaveValue('2026-10-25');
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('ABDUSROLLS');
+    await expect(page.getByLabel(/^Reference/)).toHaveValue('34567');
+    await expect(page.getByTestId('date-window-warning')).toContainText('Dated 25 Oct 2026, outside the allowed window');
+    expect(await page.getByTestId('inbox-text').innerText()).not.toContain('123456'); // the balance is never kept
+
+    await page.getByRole('button', { name: 'Confirm expense' }).click(); // a warning does not block saving
+    await expect(page.getByTestId('inbox-empty')).toBeVisible(); // the save has finished
+    await page.goto('/grants');
+    await expect(page.getByTestId('balance-remaining')).toHaveText('₹77,601.00 left');
+  });
+});
+
 test.describe('REQ-CAP-04: Inbox confirm and discard', () => {
   test('REQ-CAP-04: confirming creates the expense with the proof attached, drops the balance, and opens the next item', async ({ page }) => {
     await withTrip(page);

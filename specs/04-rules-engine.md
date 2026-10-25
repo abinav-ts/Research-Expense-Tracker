@@ -10,14 +10,15 @@ Covers: flags on claim items. Parent: `../SPEC.md`.
 
 ### REQ-RULE-01 — Pure deterministic evaluate() [MUST] [draft]
 Same input always gives same output; no I/O, clocks or randomness.
-### REQ-RULE-02 — DATE_OUT_OF_WINDOW [MUST] [draft]
+### REQ-RULE-02 — DATE_OUT_OF_WINDOW [MUST] [built]
 The system shall flag (warn) any item dated before `trip.startDate − travelBufferDays` or after `trip.endDate + travelBufferDays`.
 Acceptance:
 - Given a trip 2026-11-10..2026-11-14 and buffer 2, When an item is dated 2026-11-08, Then no flag.
 - When an item is dated 2026-11-07, Then a `DATE_OUT_OF_WINDOW` warn flag whose message includes the date and the allowed window.
 - When an item is dated 2026-11-16, Then no flag; 2026-11-17 flags.
 - Dates compare as `YYYY-MM-DD` strings (REQ-NFR-05).
-Tests: tests/unit/rules.date-window.test.ts
+- In M1 the flag is shown live: as a warning under the date field of the expense form (while typing, never blocking), as a chip on the expense row, in the "flagged only" filter and on the expense page. Flags are derived from the trip dates and the grant buffer on every render, so editing the trip re-evaluates them at once. The rest of `evaluate()` (REQ-RULE-01) arrives in M2.
+Tests: tests/unit/rules.date-window.test.ts, tests/e2e/capture.smoke.test.ts
 ### REQ-RULE-03 — OVER_CATEGORY_CAP [MUST] [draft]
 Warn when a category's total on the claim exceeds `capPerTripMinor`; flag attaches to the item that crosses the cap.
 ### REQ-RULE-04 — OVER_GRANT_BALANCE [MUST] [draft]

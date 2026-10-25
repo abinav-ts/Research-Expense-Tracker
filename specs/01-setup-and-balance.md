@@ -24,7 +24,7 @@ Acceptance:
 - Given no grants exist, When the user taps "Add trip", Then they are asked to create a grant first.
 - Validation: name, city, country required; end ≥ start; budget (optional) > 0.
 - Given trip dates outside the grant's start–end period, Then an inline warning is shown but saving is allowed.
-- Given a trip's dates are edited, Then date-window flags on its expenses are re-evaluated immediately (REQ-RULE-02). *(Flags do not exist yet: this line is delivered with the rules engine in M2.)*
+- Given a trip's dates are edited, Then date-window flags on its expenses are re-evaluated immediately (REQ-RULE-02). *(Delivered for REQ-RULE-02 in M1: flags are derived from the current trip dates, so they change as soon as the trip is saved.)*
 - Given a trip with 5 expenses is deleted after confirmation, Then its expenses go and the grant balance rises accordingly without reload.
 - The trip form has an optional "Default rates" section: add a currency code and an INR rate (used by REQ-SET-06).
 Tests: tests/unit/trip.test.ts, tests/e2e/setup.smoke.test.ts

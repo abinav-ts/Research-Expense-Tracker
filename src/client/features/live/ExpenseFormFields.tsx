@@ -3,6 +3,7 @@ import { suggestCategory } from '../../../shared/categoriser.ts';
 import { COMMON_CURRENCIES, currencyExponent } from '../../../shared/currency.ts';
 import { validateExpenseForm, type ExpenseFields, type ExpenseFormInput } from '../../../shared/expense-form.ts';
 import { formatInr, fxToInrMinor, parseAmount } from '../../../shared/money.ts';
+import { dateWindowFlag } from '../../../shared/rules/date-window.ts';
 import { microToText, parseRateMicro } from '../../../shared/trip.ts';
 import { CATEGORY_IDS, CATEGORY_LABELS, type CategoryId } from '../../../shared/types.ts';
 import { SelectField, TextAreaField, TextField } from '../../components/fields.tsx';
@@ -14,6 +15,8 @@ interface Props {
   tripRates?: Record<string, number> | undefined;
   /** What the user chose for each payee before (REQ-CAP-14). */
   memory: Map<string, CategoryId>;
+  /** The chosen trip's dates and the grant's buffer, for the date-window warning (REQ-RULE-02). */
+  tripWindow?: { trip: { startDate: string; endDate: string }; bufferDays: number } | undefined;
   initial?: Partial<ExpenseFormInput>;
   submitLabel: string;
   onSubmit: (fields: ExpenseFields) => Promise<void>;
@@ -28,7 +31,7 @@ const blank = (): ExpenseFormInput => ({
 });
 
 /** REQ-CAP-01 form, shared by manual add, expense detail and the Inbox confirm screen. */
-export function ExpenseFormFields({ tripRates, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
+export function ExpenseFormFields({ tripRates, tripWindow, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
   const [form, setForm] = useState<ExpenseFormInput>({ ...blank(), ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormInput, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -53,6 +56,7 @@ export function ExpenseFormFields({ tripRates, memory, initial, submitLabel, onS
   const today = todayLocal();
   const preview = validateExpenseForm(form, today);
   const futureDate = form.date > today;
+  const windowFlag = tripWindow && /^\d{4}-\d{2}-\d{2}$/.test(form.date) ? dateWindowFlag({ id: 'form', date: form.date }, tripWindow.trip, tripWindow.bufferDays) : undefined;
   // Live estimate while typing: needs only a valid amount and rate, not the whole form.
   const exponent = currencyExponent(form.currency.trim() || 'INR');
   const typedAmount = parseAmount(form.amountText, exponent);
@@ -86,6 +90,7 @@ export function ExpenseFormFields({ tripRates, memory, initial, submitLabel, onS
         </>
       )}
       <TextField id="date" label="Date" type="date" value={form.date} onChange={set('date')} error={errors.date} />
+ {windowFlag && <p role="status" className="-mt-2 mb-4 text-sm font-semibold text-state-low" data-testid="date-window-warning">⚠ {windowFlag.message} You can still save.</p>}
       {futureDate && <p role="status" className="-mt-2 mb-4 text-sm font-semibold text-state-low">⚠ This date is in the future. You can still save.</p>}
       <TextField id="payee" label="Paid to (payee)" value={form.payee} onChange={set('payee')} error={errors.payee} maxLength={200} />
 

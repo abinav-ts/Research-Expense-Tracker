@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { currencyExponent } from '../../../shared/currency.ts';
+import { normaliseRules } from '../../../shared/grant.ts';
 import { minorToText } from '../../../shared/money.ts';
 import { parseReceiptText } from '../../../shared/receipt-parser.ts';
 import { PROOF_TYPE_LABELS, type InboxItem, type ProofType } from '../../../shared/types.ts';
@@ -44,7 +45,7 @@ function Confirm({ item, next }: { item: InboxItem; next?: string | undefined })
   return (
     <>
       <ExpenseFormFields
-        key={item.id} tripRates={chosen.trip.fxRatesMicro} memory={choices.memory} initial={initial} submitLabel="Confirm expense"
+        key={item.id} tripRates={chosen.trip.fxRatesMicro} tripWindow={{ trip: chosen.trip, bufferDays: normaliseRules(chosen.grant.rules).travelBufferDays }} memory={choices.memory} initial={initial} submitLabel="Confirm expense"
         top={
           <>
             <SelectField id="trip" label="Trip" value={chosen.trip.id} onChange={setTripId}

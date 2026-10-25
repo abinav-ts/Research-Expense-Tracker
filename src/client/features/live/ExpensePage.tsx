@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { currencyExponent } from '../../../shared/currency.ts';
 import { minorToText } from '../../../shared/money.ts';
+import { dateWindowFlag } from '../../../shared/rules/date-window.ts';
 import { microToText } from '../../../shared/trip.ts';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
 import { btn, btnDanger, h1 } from '../../components/ui.ts';
@@ -21,7 +22,9 @@ export function ExpensePage() {
 
   if (!data) return <p role="status">Loading…</p>;
   if (!data.detail) return <p role="alert">That expense was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
-  const { expense, trip } = data.detail;
+  const { expense, trip, grant } = data.detail;
+  const bufferDays = grant.rules.travelBufferDays;
+  const flag = dateWindowFlag(expense, trip, bufferDays);
   const exponent = currencyExponent(expense.originalCurrency);
   const back = `/trips/${trip.id}`;
 
@@ -29,6 +32,7 @@ export function ExpensePage() {
     <div>
       <p className="text-sm"><Link to={back} className="underline">{trip.name}</Link></p>
       <h1 className={`${h1} mb-1`}>{expense.payee}</h1>
+      {flag && <p role="status" className="mb-2 font-semibold text-state-low" data-testid="expense-flag">⚠ {flag.message}</p>}
       {expense.excluded && <p role="status" className="mb-2 font-semibold text-state-low">Excluded: not counted in the balance and left out of the claim.</p>}
       {expense.originalCurrency !== 'INR' && expense.inrStatus === 'pending' && <p className="mb-2 text-sm font-semibold text-state-low">The rupee amount is an estimate until it is matched to your bank statement.</p>}
 
@@ -39,7 +43,7 @@ export function ExpensePage() {
 
       <ExpenseFormFields
         key={expense.updatedAt}
-        tripRates={trip.fxRatesMicro} memory={data.memory} submitLabel="Save changes"
+        tripRates={trip.fxRatesMicro} tripWindow={{ trip, bufferDays }} memory={data.memory} submitLabel="Save changes"
         initial={{
           amountText: minorToText(expense.originalMinor, exponent), currency: expense.originalCurrency,
           rateText: expense.estimatedRateMicro ? microToText(expense.estimatedRateMicro) : '', date: expense.date, payee: expense.payee,

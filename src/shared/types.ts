@@ -131,3 +131,11 @@ export interface InboxItem {
   // text items: already scrubbed of card digits and available-limit text (REQ-CAP-13)
   text?: string;
 }
+
+/** A rule-check result on one item (REQ-RULE-09): `error` blocks submission, `warn` never blocks, `info` is advisory. */
+export interface Flag {
+  ruleId: string;
+  severity: 'info' | 'warn' | 'error';
+  message: string;
+  itemId: string;
+}

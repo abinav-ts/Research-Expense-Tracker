@@ -28,16 +28,24 @@ export function formatDateLabel(value: string): string {
   return `${Number(d)} ${MONTH_LABELS[Number(m) - 1] ?? '?'} ${y}`;
 }
 
-/** Finds the first date in free text: 2026-11-12, 12-Nov-26, 12 Nov 2026, 12/11/2026 (day first, as in India). */
+const MONTH_WORDS = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+
+/**
+ * Finds the first date in free text. Understands 2026-11-12, 12-Nov-26, 12 Nov 2026, 25OCT26 (no separators),
+ * Nov 12, 2026, and 12/11/2026 (day first, as in India). Only real month names count, so "5 Marketing 2026" is not a date.
+ */
 export function findDateInText(text: string): string | undefined {
   const found: { index: number; date: string }[] = [];
   const add = (index: number, date: string | undefined) => date && found.push({ index, date });
   const year = (s: string) => (s.length === 2 ? 2000 + Number(s) : Number(s));
+  const month = (word: string) => MONTHS.indexOf(word.slice(0, 3).toLowerCase()) + 1;
 
   for (const m of text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) add(m.index, makeDate(+m[1]!, +m[2]!, +m[3]!));
-  for (const m of text.matchAll(/\b(\d{1,2})[-\s/.]+([A-Za-z]{3,9})[-\s/.,]+(\d{4}|\d{2})\b/g)) {
-    const month = MONTHS.indexOf(m[2]!.slice(0, 3).toLowerCase()) + 1;
-    if (month > 0) add(m.index, makeDate(year(m[3]!), month, +m[1]!));
+  for (const m of text.matchAll(new RegExp(`\\b(\\d{1,2})[-\\s/.]*(${MONTH_WORDS})[-\\s/.,]*(\\d{4}|\\d{2})\\b`, 'gi'))) {
+    add(m.index, makeDate(year(m[3]!), month(m[2]!), +m[1]!));
+  }
+  for (const m of text.matchAll(new RegExp(`\\b(${MONTH_WORDS})[-\\s/.]*(\\d{1,2})(?:st|nd|rd|th)?,?[-\\s/.]*(\\d{4})\\b`, 'gi'))) {
+    add(m.index, makeDate(year(m[3]!), month(m[1]!), +m[2]!));
   }
   for (const m of text.matchAll(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})\b/g)) add(m.index, makeDate(year(m[3]!), +m[2]!, +m[1]!));
 

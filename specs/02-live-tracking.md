@@ -61,8 +61,8 @@ Notes: parser is `parseReceiptText(text)` in `src/shared`, tested on synthetic t
 ### REQ-CAP-06 — Expense list [MUST] [built]
 The system shall list a trip's expenses grouped by day with filters (category, flagged), and allow edit, exclude, delete and viewing the attachment.
 Acceptance:
-- Expenses are grouped under date headings (newest first) with a day total; each row shows payee, category chip, INR amount (foreign items also show the original amount), a status chip (*Pending* / *Confirmed*), and a proof thumbnail. The flag icon when flagged arrives with the rules engine (REQ-RULE-01, M2).
-- Filters: category, status (and *flagged only*, added with the rules engine in M2). Active filters are shown and can be cleared; the header totals (trip total, pending, confirmed) reflect the whole trip, not the filter.
+- Expenses are grouped under date headings (newest first) with a day total; each row shows payee, category chip, INR amount (foreign items also show the original amount), a status chip (*Pending* / *Confirmed*), and a proof thumbnail. A flagged row shows a chip naming the flag; in M1 the only flag is REQ-RULE-02 (date outside the trip window), the rest arrive with the rules engine in M2.
+- Filters: category, status, *flagged only*. Active filters are shown and can be cleared; the header totals (trip total, pending, confirmed) reflect the whole trip, not the filter.
 - Tapping a row opens the detail: edit all fields, view the proof full size, exclude/include, delete (with confirmation).
 - Exclude: the row is dimmed and labelled "Excluded", the balance is recomputed, and the item is left out of the claim.
 - Empty trip: a message explains how to add the first expense.
@@ -107,12 +107,14 @@ Acceptance:
 Tests: tests/unit/backup.test.ts
 
 ### REQ-CAP-13 — Paste or share SMS/notification text [MUST] [built]
-The system shall accept pasted text, or text shared through the share sheet, from a card or bank SMS/notification and run the same parser as OCR output (`parseReceiptText`) to prefill the Inbox form. No OCR is involved, so this is the most accurate path for card SMS and the fallback if OCR is unavailable. Card digits and "available limit" text are discarded, never stored.
+The system shall accept pasted text, or text shared through the share sheet, from a card or bank SMS/notification and run the same parser as OCR output (`parseReceiptText`) to prefill the Inbox form. No OCR is involved, so this is the most accurate path for card SMS and the fallback if OCR is unavailable. Card digits, "available limit" and account-balance ("Bal") figures are discarded before saving, never stored.
 Acceptance:
 - Given the text "INR 2,450.00 spent on card XX1234 at HOTEL SAMPLE on 12-Nov-26", Then amount ₹2,450.00, date 2026-11-12 and payee "HOTEL SAMPLE" are prefilled, and the card digits are not stored.
 - Given a text with "Avl Lmt INR 85,000.00", Then that figure appears nowhere in the stored expense or the claim.
 - Given text the parser cannot read, Then an empty form opens with the text shown beside it for manual entry.
 - Given two amounts in one text, Then the amount next to "spent/paid/debited" wins; if unclear, the field stays empty.
+- Given "Rs 2399 spent@ ABDUSROLLS on 25OCT26 12:59 Bal Rs.123456 Ref 34567", Then amount ₹2,399.00, date 2026-10-25, payee "ABDUSROLLS" and reference "34567" are prefilled, and the balance 123456 is stored nowhere.
+- Formats vary by bank, so the parser accepts: merchant after "at", "@" or "spent@"; dates as 25OCT26, 25-OCT-26, 25 Oct 2026, Oct 25, 2026, 25/10/2026, 2026-10-25; amounts as Rs 2399, Rs.2,399.00, INR 2399, ₹2399; references after Ref, UTR, Txn ID, UPI Ref (must contain a digit). Anything it cannot read stays empty; the user always confirms.
 - A "Paste text" button on the Inbox page works on every browser, including iOS.
 Tests: tests/unit/receipt-parser.test.ts
 

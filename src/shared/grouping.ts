@@ -4,6 +4,8 @@ import type { CategoryId, Expense } from './types.ts';
 export interface ExpenseFilters {
   categoryId?: CategoryId | 'none';
   status?: 'pending' | 'confirmed';
+  /** Only expenses that have a rule flag (REQ-CAP-06). */
+  flaggedOnly?: boolean;
 }
 export interface DayGroup<E> {
   date: string;
@@ -11,12 +13,13 @@ export interface DayGroup<E> {
   /** Sum of non-excluded expenses that day. */
   totalMinor: number;
 }
-type Row = Pick<Expense, 'date' | 'inrMinor' | 'inrStatus' | 'excluded' | 'categoryId' | 'createdAt'>;
+type Row = Pick<Expense, 'date' | 'inrMinor' | 'inrStatus' | 'excluded' | 'categoryId' | 'createdAt'> & { id?: string };
 
-export function applyFilters<E extends Row>(expenses: E[], f: ExpenseFilters): E[] {
+export function applyFilters<E extends Row>(expenses: E[], f: ExpenseFilters, flaggedIds: ReadonlySet<string> = new Set()): E[] {
   return expenses.filter((e) => {
     if (f.categoryId === 'none' ? e.categoryId !== undefined : f.categoryId && e.categoryId !== f.categoryId) return false;
     if (f.status && e.inrStatus !== f.status) return false;
+    if (f.flaggedOnly && !(e.id && flaggedIds.has(e.id))) return false;
     return true;
   });
 }

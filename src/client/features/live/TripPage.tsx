@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router';
 import { formatDateLabel } from '../../../shared/dates.ts';
 import { applyFilters, tripTotals, type ExpenseFilters } from '../../../shared/grouping.ts';
 import { formatInr } from '../../../shared/money.ts';
+import { dateWindowFlag } from '../../../shared/rules/date-window.ts';
+import type { Flag } from '../../../shared/types.ts';
 import { CATEGORY_IDS, CATEGORY_LABELS } from '../../../shared/types.ts';
 import { SelectField } from '../../components/fields.tsx';
 import { btn, btnPrimary, card, h1, mutedText } from '../../components/ui.ts';
@@ -16,15 +18,23 @@ export function TripPage() {
   const data = useLive(() => queries.tripDetail(tripId), [tripId]);
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
 
   if (data === undefined) return <p role="status">Loading…</p>;
   if (data === null) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
   const { trip, grant, expenses, grantExpenses } = data;
 
+  // Flags are derived from the current trip dates and grant buffer, so editing the trip re-evaluates them at once.
+  const flags = new Map<string, Flag>();
+  for (const e of expenses) {
+    const flag = dateWindowFlag(e, trip, grant.rules.travelBufferDays);
+    if (flag) flags.set(e.id, flag);
+  }
   const filters: ExpenseFilters = {};
   if (category) filters.categoryId = category as ExpenseFilters['categoryId'];
   if (status) filters.status = status as ExpenseFilters['status'];
-  const filtered = applyFilters(expenses, filters);
+  if (flaggedOnly) filters.flaggedOnly = true;
+  const filtered = applyFilters(expenses, filters, new Set(flags.keys()));
   const totals = tripTotals(expenses); // whole trip, never the filtered view
 
   return (
@@ -60,13 +70,17 @@ export function TripPage() {
             <SelectField id="filter-status" label="Status" value={status} onChange={setStatus}
               options={[{ value: '', label: 'Pending and confirmed' }, { value: 'pending', label: 'Pending only' }, { value: 'confirmed', label: 'Confirmed only' }]} />
           </div>
-          {(category || status) && (
+          <label className="mb-4 flex min-h-11 items-center gap-2 font-semibold">
+            <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)} className="h-5 w-5" />
+            Flagged only ({flags.size})
+          </label>
+          {(category || status || flaggedOnly) && (
             <p className="mb-4 flex items-center gap-3" role="status">
               <span>Showing {filtered.length} of {expenses.length} expenses.</span>
-              <button type="button" className={btn} onClick={() => { setCategory(''); setStatus(''); }}>Clear filters</button>
+              <button type="button" className={btn} onClick={() => { setCategory(''); setStatus(''); setFlaggedOnly(false); }}>Clear filters</button>
             </p>
           )}
-          {filtered.length === 0 ? <p className={mutedText}>No expenses match these filters.</p> : <ExpenseList expenses={filtered} />}
+          {filtered.length === 0 ? <p className={mutedText}>No expenses match these filters.</p> : <ExpenseList expenses={filtered} flags={flags} />}
         </>
       )}
     </div>

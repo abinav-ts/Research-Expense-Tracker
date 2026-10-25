@@ -43,3 +43,12 @@ describe('REQ-CAP-06: expense list grouping and filters', () => {
     expect(tripTotals(list)).toEqual(totals); // ...but totals computed from the full list stay the same
   });
 });
+
+describe('REQ-CAP-06: flagged-only filter', () => {
+  it('REQ-CAP-06: "flagged only" keeps just the expenses that have a flag', () => {
+    const rows = [{ ...e('2026-11-10', 100), id: 'a' }, { ...e('2026-11-11', 200), id: 'b' }, { ...e('2026-11-12', 300), id: 'c' }];
+    expect(applyFilters(rows, { flaggedOnly: true }, new Set(['b'])).map((r) => r.id)).toEqual(['b']);
+    expect(applyFilters(rows, { flaggedOnly: true }).length).toBe(0);
+    expect(applyFilters(rows, {}, new Set(['b'])).length).toBe(3);
+  });
+});

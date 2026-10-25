@@ -53,3 +53,51 @@ describe('REQ-CAP-13: paste or share SMS/notification text', () => {
     expect(parseReceiptText('Rs 10 paid on 31-Feb-26').date).toBeUndefined();
   });
 });
+
+describe('REQ-CAP-13: bank SMS formats beyond the first samples', () => {
+  const OWNER_SMS = 'Rs 2399 spent@ ABDUSROLLS on 25OCT26 12:59 Bal Rs.123456 Ref 34567'; // a real-style SMS pasted by the owner
+
+  it('REQ-CAP-13: "Rs 2399 spent@ ABDUSROLLS on 25OCT26 12:59 Bal Rs.123456 Ref 34567" gives amount, date, payee and reference', () => {
+    expect(parseReceiptText(scrubReceiptText(OWNER_SMS))).toEqual({
+      amountMinor: 239_900, currency: 'INR', date: '2026-10-25', payee: 'ABDUSROLLS', reference: '34567',
+    });
+  });
+
+  it('REQ-CAP-13: the account balance in that SMS (Bal Rs.123456) is removed before saving and never taken as the amount', () => {
+    const scrubbed = scrubReceiptText(OWNER_SMS);
+    expect(scrubbed).not.toContain('123456');
+    expect(scrubbed).not.toMatch(/\bbal\b/i);
+    expect(parseReceiptText(OWNER_SMS).amountMinor).toBe(239_900);
+  });
+
+  it('REQ-CAP-13: balance wordings Bal, Balance, Avl Bal, Available balance and Avl Lmt are all scrubbed', () => {
+    for (const text of ['Bal: Rs 5,000.50', 'Balance INR 77,000', 'Avl Bal Rs.1,23,456.00 CR', 'Available balance 99999', 'Avl Lmt INR 85,000.00']) {
+      expect(scrubReceiptText(`Rs 10 spent at X on 01-Jan-26. ${text}`), text).not.toMatch(/\d{4,}/);
+    }
+  });
+
+  it('REQ-CAP-13: the merchant may follow "at", "@", or "spent@" with or without a space', () => {
+    expect(parseReceiptText('Rs 100 spent at SHOP ONE on 01-Nov-26').payee).toBe('SHOP ONE');
+    expect(parseReceiptText('Rs 100 spent @ SHOP TWO on 01-Nov-26').payee).toBe('SHOP TWO');
+    expect(parseReceiptText('Rs 100 spent@SHOP THREE on 01-Nov-26').payee).toBe('SHOP THREE');
+    expect(parseReceiptText('Rs 100 spent@ SHOP FOUR Ref 98765').payee).toBe('SHOP FOUR');
+  });
+
+  it('REQ-CAP-13: dates may be written 25OCT26, 25-OCT-26, 25 Oct 2026, 25Oct2026, Oct 25, 2026 or 25.10.26', () => {
+    for (const written of ['25OCT26', '25-OCT-26', '25 Oct 2026', '25Oct2026', 'Oct 25, 2026', '25.10.26', '25/10/2026', '2026-10-25']) {
+      expect(parseReceiptText(`Rs 10 spent at X on ${written} 12:59`).date, written).toBe('2026-10-25');
+    }
+  });
+
+  it('REQ-CAP-13: ordinary words are not mistaken for dates ("5 Marketing 2026") or references ("refund")', () => {
+    expect(parseReceiptText('Rs 10 spent at X, 5 Marketing 2026').date).toBeUndefined();
+    expect(parseReceiptText('Rs 10 paid, refund pending').reference).toBeUndefined();
+    expect(parseReceiptText('Rs 10 paid. Ref ABCDEF').reference).toBeUndefined(); // no digit: not a reference number
+  });
+
+  it('REQ-CAP-13: amounts written Rs2399, Rs.2,399.00, INR 2399 and ₹2399 all read as 239900 paise', () => {
+    for (const written of ['Rs2399', 'Rs.2,399.00', 'INR 2399', '₹2399', 'Rs. 2399/-']) {
+      expect(parseReceiptText(`${written} spent at SHOP on 01-Nov-26`).amountMinor, written).toBe(239_900);
+    }
+  });
+});

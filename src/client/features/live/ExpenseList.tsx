@@ -3,12 +3,12 @@ import { currencyExponent } from '../../../shared/currency.ts';
 import { formatDateLabel } from '../../../shared/dates.ts';
 import { groupByDay } from '../../../shared/grouping.ts';
 import { formatInr, formatMinor } from '../../../shared/money.ts';
-import { CATEGORY_LABELS, type Expense } from '../../../shared/types.ts';
+import { CATEGORY_LABELS, type Expense, type Flag } from '../../../shared/types.ts';
 import { chip } from '../../components/ui.ts';
 import { ProofThumb } from './ProofView.tsx';
 
 /** REQ-CAP-06: expenses grouped by day, newest first, each row linking to its detail. */
-export function ExpenseList({ expenses }: { expenses: Expense[] }) {
+export function ExpenseList({ expenses, flags }: { expenses: Expense[]; flags: ReadonlyMap<string, Flag> }) {
   return (
     <div>
       {groupByDay(expenses).map((day) => (
@@ -31,6 +31,7 @@ export function ExpenseList({ expenses }: { expenses: Expense[] }) {
                         <span className={chip}>{e.inrStatus === 'confirmed' ? '✓ Confirmed' : '◔ Pending'}</span>
                         {e.paymentMode === 'cash' && <span className={chip}>Cash</span>}
                         {e.excluded && <span className={chip}>Excluded</span>}
+                        {flags.has(e.id) && <span className={`${chip} border-state-low font-semibold text-state-low`} title={flags.get(e.id)!.message} data-testid="flag-chip">⚠ Date outside trip window</span>}
                       </span>
                     </span>
                     <span className="amount text-right">

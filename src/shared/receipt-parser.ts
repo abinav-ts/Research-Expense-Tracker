@@ -18,7 +18,8 @@ export interface ParsedReceipt {
  */
 export function scrubReceiptText(text: string): string {
   return text
-    .replace(/\b(?:avl|avail(?:able)?)\.?\s*(?:lmt|limit|bal(?:ance)?)\.?\s*:?\s*(?:₹|rs\.?|[A-Z]{3})?\s*[\d,]+(?:\.\d+)?/gi, '')
+    // "Avl Lmt INR 85,000", "Bal Rs.123456", "Available balance: 1,200.50": limits and balances are never stored.
+    .replace(/\b(?:(?:avl|avail(?:able)?)\.?\s*)?(?:lmt|limit|bal(?:ance)?)\b\.?\s*:?\s*(?:₹|rs\.?|[A-Z]{3})?\s*[\d,]+(?:\.\d+)?(?:\s*(?:cr|dr)\b)?/gi, '')
     .replace(/\b(card|a\/c|acct?|account)(\s*(?:no\.?|number|ending|ending with)?\s*[:#]?)\s*[xX*•]*\s*\d{2,}/gi, '$1 XXXX')
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
@@ -58,17 +59,22 @@ function pickAmount(text: string): { amountMinor: number; currency: string } | u
   return undefined;
 }
 
+// Words that end a payee name: "…at HOTEL SAMPLE on 12-Nov-26", "…@ ABDUSROLLS on 25OCT26 Bal …".
+const PAYEE_END = '(?:on|dated|ref|txn|upi|avl|avail|bal|balance|for|using|via|from|with|date)';
+
 function pickPayee(text: string, hasAmount: boolean): string | undefined {
-  const clean = (s: string) => s.replace(/\s+/g, ' ').replace(/[.,:;-]+$/, '').trim();
-  const labelled = /(?:paid to|sent to|payee|merchant|paid at)\s*[:\-]?\s*([^\n\r]+)/i.exec(text);
+  const clean = (s: string) => s.replace(/\s+/g, ' ').replace(/[.,:;\-@]+$/, '').trim();
+  const labelled = /(?:paid to|sent to|transferred to|trf to|payee|merchant|paid at|towards)\s*[:\-]?\s*([^\n\r]+)/i.exec(text);
   if (labelled?.[1] && /^[A-Za-z0-9]/.test(labelled[1].trim())) return clean(labelled[1]).slice(0, 80) || undefined;
   if (!hasAmount) return undefined; // the loose "at <place>" form is only trusted in a payment message
-  const at = /\bat\s+([A-Za-z][^\n\r]*?)(?=\s+(?:on|dated|ref|txn|upi|avl|for|using)\b|[.,\n\r]|$)/i.exec(text);
+  // "at MERCHANT", "@ MERCHANT" and "spent@MERCHANT" are all common in bank SMS.
+  const at = new RegExp(`(?:\\bat\\s+|@\\s*)([A-Za-z0-9][^\\n\\r]*?)(?=\\s+${PAYEE_END}\\b|[.,\\n\\r]|$)`, 'i').exec(text);
   return at?.[1] ? clean(at[1]).slice(0, 80) || undefined : undefined;
 }
 
+/** Reference numbers: "UTR: X", "Txn ID X", "UPI Ref 123456", "Ref 34567". Must contain a digit so ordinary words are not taken. */
 function pickReference(text: string): string | undefined {
-  const m = /(?:utr|txn\s*(?:id|no\.?)?|transaction\s*(?:id|no\.?)?|upi\s*(?:ref(?:erence)?\s*(?:no\.?)?|transaction\s*id)|ref(?:erence)?\s*(?:no\.?|number)?)\s*[:#\-]?\s*([A-Za-z0-9]{6,})/i.exec(text);
+  const m = /\b(?:utr|txn\s*(?:id|no\.?)?|transaction\s*(?:id|no\.?)?|upi\s*(?:ref(?:erence)?\s*(?:no\.?)?|transaction\s*id)|ref(?:erence)?\s*(?:no\.?|number)?)\b\s*[:#\-]?\s*(?=[A-Za-z0-9]*\d)([A-Za-z0-9]{4,})/i.exec(text);
   return m?.[1];
 }
 
