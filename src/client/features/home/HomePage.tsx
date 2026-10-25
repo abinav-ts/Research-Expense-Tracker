@@ -18,7 +18,7 @@ export function HomePage() {
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Link to="/trips" className={card}>
+        <Link to="/grants" className={card}>
           <span className="font-display text-xl font-semibold">Researcher</span>
           <span className="text-ink-soft">Track expenses and prepare a claim.</span>
         </Link>
