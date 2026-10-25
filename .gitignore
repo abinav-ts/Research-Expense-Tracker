@@ -7,3 +7,4 @@ test-results/
 .DS_Store
 *.log
 worker-configuration.d.ts
+public/ocr/

@@ -28,7 +28,7 @@ Acceptance:
 - Given the picker is cancelled, Then nothing changes.
 Tests: tests/unit/import.test.ts, tests/e2e/capture.smoke.test.ts
 
-### REQ-CAP-03 — OS share-sheet import [SHOULD] [agreed]
+### REQ-CAP-03 — OS share-sheet import [SHOULD] [built]
 The system shall appear in the OS share sheet for images, PDFs and text (Web Share Target; the app must be installed) where the platform supports it, and add shared files to the Inbox and shared text to the text parser (REQ-CAP-13). Handled by the service worker so it works offline. Unsupported platforms use REQ-CAP-02.
 Acceptance: as REQ-OFF-03 (handler behaviour), plus:
 - Given the installed app on Android Chrome, When the user shares a screenshot from the gallery or text from the SMS app to RET, Then the app opens at the Inbox showing the item, also in airplane mode (manual check, M1b).
@@ -46,7 +46,7 @@ Acceptance:
 - Given an item with text only (SMS), Then the form is prefilled by the text parser (REQ-CAP-13) and no image is shown.
 Tests: tests/e2e/inbox.smoke.test.ts
 
-### REQ-CAP-05 — OCR prefill for screenshots [MUST] [agreed]
+### REQ-CAP-05 — OCR prefill for screenshots [MUST] [built]
 The system shall run on-device OCR on an inbox image and prefill amount, date, payee, reference where found. Fields are always user-confirmed; failure leaves the form empty and never blocks.
 Acceptance:
 - Given the demo UPI-style screenshot (REQ-DEMO-05), Then amount, date, payee and reference are prefilled correctly.

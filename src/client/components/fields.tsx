@@ -5,13 +5,18 @@ interface BaseProps {
   label: string;
   error?: string | undefined;
   hint?: string | undefined;
+  /** Prefilled by recognition and not yet edited by the user (REQ-CAP-05). */
+  check?: boolean | undefined;
 }
 const control = 'block min-h-11 w-full rounded-lg border border-ink-soft bg-surface px-3 py-2 text-ink';
 
-function Wrap({ id, label, error, hint, children }: BaseProps & { children: ReactNode }) {
+function Wrap({ id, label, error, hint, check, children }: BaseProps & { children: ReactNode }) {
   return (
     <div className="mb-4">
-      <label htmlFor={id} className="mb-1 block text-sm font-semibold">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-sm font-semibold">
+        {label}
+        {check && <span className="ml-2 rounded border border-state-low px-1 text-xs font-semibold text-state-low" data-testid={`check-${id}`}>Check</span>}
+      </label>
       {children}
       {hint && <p id={`${id}-hint`} className="mt-1 text-sm text-ink-soft">{hint}</p>}
       {error && <p id={`${id}-error`} role="alert" className="mt-1 text-sm font-semibold text-state-over">⚠ {error}</p>}
@@ -30,9 +35,9 @@ interface TextFieldProps extends BaseProps {
   maxLength?: number;
   autoComplete?: string;
 }
-export function TextField({ id, label, error, hint, value, onChange, type = 'text', inputMode, placeholder, list, maxLength, autoComplete = 'off' }: TextFieldProps) {
+export function TextField({ id, label, error, hint, check, value, onChange, type = 'text', inputMode, placeholder, list, maxLength, autoComplete = 'off' }: TextFieldProps) {
   return (
-    <Wrap id={id} label={label} error={error} hint={hint}>
+    <Wrap id={id} label={label} error={error} hint={hint} check={check}>
       <input
         id={id} name={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} className={control}
         inputMode={inputMode} placeholder={placeholder} list={list} maxLength={maxLength} autoComplete={autoComplete}

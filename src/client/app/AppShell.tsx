@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router';
 import { Logo } from '../brand/Logo.tsx';
 import { db } from '../db/index.ts';
 import { clearError, useErrorMessage } from '../lib/errors.ts';
 import { useLive } from '../lib/useLive.ts';
+import { ensureOcrAssets } from '../ocr/assets.ts';
 
 interface AppShellProps {
   /** 'reviewer' pages show the logo without a home link (REQ-BRAND-01). */
@@ -15,6 +17,14 @@ const navLink = 'inline-flex min-h-11 items-center rounded-lg px-2 font-semibold
 
 function ResearcherNav() {
   const inboxCount = useLive(() => db.inbox.count()) ?? 0;
+  // REQ-OFF-05: once someone is actually using the researcher screens (not the landing page or the reviewer), quietly
+  // fetch the ~7 MB of recognition data in the background so screenshots can be read later, offline too.
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (pathname === '/') return;
+    const timer = window.setTimeout(() => void ensureOcrAssets(), 3000);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
   return (
     <nav aria-label="Main" className="ml-auto flex items-center gap-1">
       <Link to="/grants" className={navLink}>Grants</Link>

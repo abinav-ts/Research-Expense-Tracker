@@ -22,10 +22,10 @@ Acceptance:
 - Offline, *Submit* explains "You're offline — submit when connected" (or queues it, REQ-OFF-04).
 - During the whole offline flow, no request leaves for a third-party origin (network log shows only our own origin).
 - Client routes (e.g. `/inbox`, `/trip/…`) load offline via a navigation fallback to the app shell; `/api/*` is never served from the fallback.
-- The precache contains the app shell, JS/CSS, self-hosted fonts and icons, the sample CSV, demo fixtures and (REQ-OFF-05) the OCR assets.
+- The precache contains the app shell, JS/CSS, self-hosted fonts and icons, the sample CSV and demo fixtures. The OCR assets (~7 MB) are not part of the install precache: they are cached in the background by REQ-OFF-05, so a first visit stays small.
 Tests: tests/e2e/offline.smoke.test.ts (Playwright `context.setOffline(true)` after first load); manual airplane-mode check in M4
 
-### REQ-OFF-03 — Share Target handled by service worker [SHOULD] [agreed]
+### REQ-OFF-03 — Share Target handled by service worker [SHOULD] [built]
 Manifest `share_target` accepts image, PDF and text by POST; the service worker stores them in IndexedDB and redirects to the Inbox, with no network needed.
 Acceptance:
 - Manifest: `action` "/share-target", `method` "POST", `enctype` "multipart/form-data", `params` {title, text, url, files: [{name "files", accept ["image/*", "application/pdf"]}]}.
@@ -45,10 +45,10 @@ Acceptance:
 - Each submission carries a client-generated idempotency key; the server returns the existing claim if it receives the same key twice (no duplicates).
 Tests: tests/unit/outbox.test.ts, tests/api/claims.submit.test.ts
 
-### REQ-OFF-05 — OCR assets self-hosted and precached [SHOULD] [agreed]
+### REQ-OFF-05 — OCR assets self-hosted and precached [SHOULD] [built]
 Acceptance:
 - The Tesseract worker, WASM core and English language data are served from our own origin (no CDN) and are added to the cache in the background after first install, without blocking the UI.
-- The Inbox shows "Recognition ready" or "Downloading recognition data (x MB)…".
+- The Inbox shows "Recognition ready" or "Downloading recognition data (x MB)…". The download starts about 3 seconds after the user opens any researcher screen (not the landing page or the reviewer), only when online, and only fetches the one wasm core this device needs.
 - If the data is not yet cached and the device is offline, OCR is disabled with a clear message and paste-text parsing (REQ-CAP-13) still works.
 Tests: tests/e2e/ocr.smoke.test.ts
 

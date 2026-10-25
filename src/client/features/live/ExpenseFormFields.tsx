@@ -10,6 +10,15 @@ import { SelectField, TextAreaField, TextField } from '../../components/fields.t
 import { btnPrimary } from '../../components/ui.ts';
 import { todayLocal } from '../../lib/today.ts';
 
+/** Values pushed into the form from outside. A new `id` applies them once. */
+export interface FormPatch {
+  id: number;
+  itemId?: string;
+  values: Partial<ExpenseFormInput>;
+  /** 'recognition' (OCR) never overwrites what the user already typed and marks fields "Check"; 'user' (tap-to-assign) always applies. */
+  source: 'recognition' | 'user';
+}
+
 interface Props {
   /** The trip's default estimated rates (REQ-SET-06), prefilled for foreign currencies. */
   tripRates?: Record<string, number> | undefined;
@@ -20,8 +29,9 @@ interface Props {
   initial?: Partial<ExpenseFormInput>;
   submitLabel: string;
   onSubmit: (fields: ExpenseFields) => Promise<void>;
-  /** Values pushed in from outside (tap-to-assign, REQ-CAP-15). A new `id` applies the values once. */
-  patch?: { id: number; values: Partial<ExpenseFormInput> } | undefined;
+  patch?: FormPatch | undefined;
+  /** Fields prefilled at the start that the user should check (REQ-CAP-05). */
+  check?: (keyof ExpenseFormInput)[];
   /** Rendered above the fields (e.g. the trip and proof-type pickers in the Inbox). */
   top?: ReactNode;
   /** Rendered next to the submit button. */
@@ -33,12 +43,18 @@ const blank = (): ExpenseFormInput => ({
 });
 
 /** REQ-CAP-01 form, shared by manual add, expense detail and the Inbox confirm screen. */
-export function ExpenseFormFields({ tripRates, tripWindow, patch, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
+export function ExpenseFormFields({ tripRates, tripWindow, patch, check, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
   const [form, setForm] = useState<ExpenseFormInput>({ ...blank(), ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormInput, string>>>({});
   const [saving, setSaving] = useState(false);
   const categoryTouched = useRef(!!initial?.categoryId);
-  const set = <K extends keyof ExpenseFormInput>(key: K) => (value: ExpenseFormInput[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const [checks, setChecks] = useState<ReadonlySet<keyof ExpenseFormInput>>(new Set(check));
+  const touched = useRef(new Set<keyof ExpenseFormInput>());
+  const set = <K extends keyof ExpenseFormInput>(key: K) => (value: ExpenseFormInput[K]) => {
+    touched.current.add(key);
+    setChecks((c) => (c.has(key) ? new Set([...c].filter((k) => k !== key)) : c));
+    setForm((f) => ({ ...f, [key]: value }));
+  };
   const isInr = form.currency.trim().toUpperCase() === 'INR' || form.currency.trim() === '';
 
   // Prefill the trip's default rate when a foreign currency is chosen and no rate has been typed.
@@ -52,7 +68,10 @@ export function ExpenseFormFields({ tripRates, tripWindow, patch, memory, initia
   useEffect(() => {
     if (!patch || patch.id === appliedPatch.current) return;
     appliedPatch.current = patch.id;
-    setForm((f) => ({ ...f, ...patch.values }));
+    const keys = (Object.keys(patch.values) as (keyof ExpenseFormInput)[]).filter((k) => patch.source === 'user' || !touched.current.has(k));
+    setForm((f) => ({ ...f, ...Object.fromEntries(keys.map((k) => [k, patch.values[k]])) }));
+    if (patch.source === 'user') keys.forEach((k) => touched.current.add(k));
+    setChecks((c) => new Set(patch.source === 'user' ? [...c].filter((k) => !keys.includes(k)) : [...c, ...keys]));
     setErrors({});
   }, [patch]);
 
@@ -89,8 +108,8 @@ export function ExpenseFormFields({ tripRates, tripWindow, patch, memory, initia
     <form onSubmit={submit} noValidate>
       {top}
       <div className="grid gap-x-4 sm:grid-cols-2">
-        <TextField id="amountText" label={`Amount${isInr ? ' (₹)' : ''}`} value={form.amountText} onChange={set('amountText')} error={errors.amountText} inputMode="decimal" />
-        <TextField id="currency" label="Currency" value={form.currency} onChange={(v) => set('currency')(v.toUpperCase())} error={errors.currency} list="expense-currencies" maxLength={3} />
+        <TextField id="amountText" check={checks.has('amountText')} label={`Amount${isInr ? ' (₹)' : ''}`} value={form.amountText} onChange={set('amountText')} error={errors.amountText} inputMode="decimal" />
+        <TextField id="currency" check={checks.has('currency')} label="Currency" value={form.currency} onChange={(v) => set('currency')(v.toUpperCase())} error={errors.currency} list="expense-currencies" maxLength={3} />
         <datalist id="expense-currencies">{COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}</datalist>
       </div>
       {!isInr && (
@@ -99,10 +118,10 @@ export function ExpenseFormFields({ tripRates, tripWindow, patch, memory, initia
           {estimateMinor !== undefined && <p className="amount mb-4 font-semibold" data-testid="inr-preview">Estimated {formatInr(estimateMinor)}</p>}
         </>
       )}
-      <TextField id="date" label="Date" type="date" value={form.date} onChange={set('date')} error={errors.date} />
+      <TextField id="date" check={checks.has('date')} label="Date" type="date" value={form.date} onChange={set('date')} error={errors.date} />
  {windowFlag && <p role="status" className="-mt-2 mb-4 text-sm font-semibold text-state-low" data-testid="date-window-warning">⚠ {windowFlag.message} You can still save.</p>}
       {futureDate && <p role="status" className="-mt-2 mb-4 text-sm font-semibold text-state-low">⚠ This date is in the future. You can still save.</p>}
-      <TextField id="payee" label="Paid to (payee)" value={form.payee} onChange={set('payee')} error={errors.payee} maxLength={200} />
+      <TextField id="payee" check={checks.has('payee')} label="Paid to (payee)" value={form.payee} onChange={set('payee')} error={errors.payee} maxLength={200} />
 
       <SelectField
         id="categoryId" label="Category" error={errors.categoryId} value={form.categoryId}
@@ -127,7 +146,7 @@ export function ExpenseFormFields({ tripRates, tripWindow, patch, memory, initia
 
       <SelectField id="paymentMode" label="Paid by" value={form.paymentMode} onChange={(v) => set('paymentMode')(v as 'bank' | 'cash')}
         options={[{ value: 'bank', label: 'Bank, UPI or card' }, { value: 'cash', label: 'Cash' }]} />
-      <TextField id="reference" label="Reference (UPI / transaction id, optional)" value={form.reference} onChange={set('reference')} />
+      <TextField id="reference" check={checks.has('reference')} label="Reference (UPI / transaction id, optional)" value={form.reference} onChange={set('reference')} />
       <TextAreaField id="note" label="Note (optional)" value={form.note} onChange={set('note')} rows={2} />
 
       <div className="flex flex-wrap gap-3">

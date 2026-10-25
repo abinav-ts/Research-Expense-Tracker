@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseReceiptText, scrubReceiptText } from '../../src/shared/receipt-parser.ts';
+import { formValuesFromReceipt } from '../../src/shared/receipt-form.ts';
 
 // All samples are synthetic.
 const CARD_SMS = 'INR 2,450.00 spent on card XX1234 at HOTEL SAMPLE on 12-Nov-26. Avl Lmt INR 85,000.00';
@@ -105,5 +106,51 @@ describe('REQ-CAP-13: bank SMS formats beyond the first samples', () => {
     for (const written of ['Rs2399', 'Rs.2,399.00', 'INR 2399', '₹2399', 'Rs. 2399/-']) {
       expect(parseReceiptText(`${written} spent at SHOP on 01-Nov-26`).amountMinor, written).toBe(239_900);
     }
+  });
+});
+
+describe('REQ-CAP-05: text read from screenshots (OCR output)', () => {
+  // What Tesseract actually returned for the synthetic fixtures (the ₹ sign was dropped).
+  const UPI_OCR = 'Payment successful\n\n1,200\nPaid to\nRAMESH STORES\n12 Nov 2026, 10:42 am\nUPI transaction ID\n123456789012\nSAMPLE - synthetic fixture - not a real payment\n';
+  const CARD_OCR = 'SAMPLEBK\nINR 2,450.00 spent on card\nXX1234 at HOTEL SAMPLE on\n12-Nov-26. Avl Lmt INR\n85,000.00\n\n12 Nov, 6:15 pm\nSAMPLE - synthetic fixture - not a real payment\n';
+  const INVOICE_OCR = 'Lisbon Computing Society\nConference registration\nInvoice date: 12 Nov 2026\nInvoice no: SAMPLE-0042\nTotal: EUR 180.00\nSAMPLE - synthetic fixture - not a real payment\n';
+
+  it('REQ-CAP-05: the UPI-style screenshot text gives ₹1,200, 12 Nov 2026, RAMESH STORES and the transaction id', () => {
+    expect(parseReceiptText(scrubReceiptText(UPI_OCR))).toEqual({ amountMinor: 120_000, currency: 'INR', date: '2026-11-12', payee: 'RAMESH STORES', reference: '123456789012' });
+  });
+
+  it('REQ-CAP-05: the card-alert screenshot text, wrapped across lines, gives ₹2,450.00, HOTEL SAMPLE, 12 Nov 2026 and drops card digits and the limit', () => {
+    const scrubbed = scrubReceiptText(CARD_OCR);
+    expect(scrubbed).not.toContain('1234');
+    expect(scrubbed).not.toContain('85,000');
+    expect(parseReceiptText(scrubbed)).toMatchObject({ amountMinor: 245_000, currency: 'INR', date: '2026-11-12', payee: 'HOTEL SAMPLE' });
+  });
+
+  it('REQ-CAP-05: an invoice suggests the total and currency; the user still confirms them', () => {
+    expect(parseReceiptText(INVOICE_OCR)).toMatchObject({ amountMinor: 18_000, currency: 'EUR', date: '2026-11-12' });
+  });
+
+  it('REQ-CAP-05: a ₹ garbled into another symbol still reads as an amount, but a bare digit run (an id) never does', () => {
+    for (const line of ['?1,200', '=1,200', '1,200', '1200.00']) expect(parseReceiptText(`Paid to X\n${line}\n`).amountMinor, line).toBe(120_000);
+    expect(parseReceiptText('Transaction ID\n123456789012\n').amountMinor).toBeUndefined();
+    expect(parseReceiptText('Ref\n34567\n').amountMinor).toBeUndefined();
+  });
+
+  it('REQ-CAP-05: two different bare amounts are ambiguous, so the field stays empty', () => {
+    expect(parseReceiptText('1,200\n3,400\n').amountMinor).toBeUndefined();
+  });
+
+  it('REQ-CAP-05: unreadable OCR noise gives an empty result and never throws', () => {
+    expect(parseReceiptText('l|i. ~~ ;; \u0000 ,,,\n..')).toEqual({});
+  });
+});
+
+describe('REQ-CAP-05: parsed values become form values', () => {
+  it('REQ-CAP-05: amounts are written in the currency\'s own units, and only found fields are returned', () => {
+    expect(formValuesFromReceipt({ amountMinor: 120_000, currency: 'INR', date: '2026-11-12', payee: 'RAMESH STORES', reference: '1234' })).toEqual({
+      amountText: '1200', currency: 'INR', date: '2026-11-12', payee: 'RAMESH STORES', reference: '1234',
+    });
+    expect(formValuesFromReceipt({ amountMinor: 12_000, currency: 'JPY' })).toEqual({ amountText: '12000', currency: 'JPY' });
+    expect(formValuesFromReceipt({})).toEqual({});
   });
 });

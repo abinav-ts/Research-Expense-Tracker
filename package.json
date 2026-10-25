@@ -8,7 +8,9 @@
     "node": ">=24"
   },
   "scripts": {
+    "predev": "node scripts/copy-ocr-assets.ts",
     "dev": "vite",
+    "prebuild": "node scripts/copy-ocr-assets.ts",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node scripts/check-brand.ts && vitest run",
@@ -18,16 +20,21 @@
     "types": "wrangler types",
     "db:local": "wrangler d1 migrations apply DB --local",
     "icons": "node scripts/make-icons.ts",
+    "fixtures": "node scripts/make-fixtures.ts",
     "deploy": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "5.3.0",
     "@fontsource-variable/inter": "5.3.0",
+    "@tesseract.js-data/eng": "1.0.0",
     "dexie": "4.4.7",
     "hono": "4.13.14",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router": "8.5.0",
+    "tesseract.js": "7.0.0",
+    "wasm-feature-detect": "1.9.0",
+    "workbox-strategies": "7.4.1",
     "zod": "4.6.7"
   },
   "devDependencies": {

@@ -53,10 +53,30 @@ function pickAmount(text: string): { amountMinor: number; currency: string } | u
   }
   const found = [...byValue.values()].sort((a, b) => a.distance - b.distance);
   const best = found[0];
-  if (!best) return undefined;
+  if (!best) return pickBareAmount(text);
   if (found.length === 1) return { amountMinor: best.minor, currency: best.currency };
   if (best.distance <= NEAR && best.distance < found[1]!.distance) return { amountMinor: best.minor, currency: best.currency };
   return undefined;
+}
+
+/**
+ * Screenshots: OCR often drops or garbles the ₹ sign, so "₹1,200" arrives as "1,200", "?1,200" or "=1,200".
+ * With no marked amount anywhere, accept a line that is only a money-formatted number (comma grouping, decimals, or
+ * a stray symbol in front). Plain digit runs (ids, references, dates) are never taken. The form marks it "check".
+ */
+function pickBareAmount(text: string): { amountMinor: number; currency: string } | undefined {
+  const lines = text.split(/\r?\n/).map((l) => l.trim());
+  const found = new Set<number>();
+  for (const line of lines) {
+    const m = /^[^A-Za-z0-9\s]?\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)$/.exec(line);
+    if (!m) continue;
+    const token = m[1]!;
+    const hasStrayPrefix = /^[^A-Za-z0-9\s]/.test(line);
+    if (!(token.includes(',') || token.includes('.') || hasStrayPrefix)) continue;
+    const parsed = parseAmount(token, 2);
+    if (parsed.ok) found.add(parsed.value);
+  }
+  return found.size === 1 ? { amountMinor: [...found][0]!, currency: 'INR' } : undefined;
 }
 
 // Words that end a payee name: "…at HOTEL SAMPLE on 12-Nov-26", "…@ ABDUSROLLS on 25OCT26 Bal …".

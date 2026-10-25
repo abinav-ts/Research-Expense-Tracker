@@ -27,7 +27,10 @@ npm run dev          # starts the app at http://localhost:5173 (stop with Ctrl+C
 | `npm run typecheck` | TypeScript check of client, server and tooling. |
 | `npm run build` | Production build into `dist/`. |
 | `npm run icons` | Regenerates `public/icons/` from `brand/` (needs Playwright's Chromium). |
+| `npm run fixtures` | Regenerates the synthetic, SAMPLE-watermarked demo proofs in `fixtures/` (needs Playwright's Chromium). |
 | `npm run deploy` | Build, apply database migrations to the live database, deploy to Cloudflare. |
+
+Screenshot recognition runs on the device with Tesseract. Its files (~15 MB, of which each device downloads ~7 MB) are copied from `node_modules` into `public/ocr/` automatically before `dev` and `build`; that folder is not committed.
 
 Check that the server and database work: with `npm run dev` running, open http://localhost:5173/api/health. It should show `{"ok":true,"db":{"hits":…}}`, and `hits` goes up on every reload.
 

@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { ACCEPTED_TYPES_TEXT, TOO_LARGE_NOTE } from '../../../shared/files.ts';
 import { scrubReceiptText } from '../../../shared/receipt-parser.ts';
 import { PROOF_TYPE_LABELS, type ProofType } from '../../../shared/types.ts';
@@ -10,6 +10,8 @@ import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
 import { formatReceivedAt } from '../../lib/today.ts';
+import { ensureOcrAssets } from '../../ocr/assets.ts';
+import { OcrStatus } from '../../ocr/OcrStatus.tsx';
 import { useLive } from '../../lib/useLive.ts';
 import { ProofThumb } from './ProofView.tsx';
 
@@ -21,8 +23,12 @@ export function InboxPage() {
   const files = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<string[]>([]);
+  const [search] = useSearchParams();
+  const shared = Number(search.get('shared') ?? 0);
+  const skipped = Number(search.get('skipped') ?? 0);
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState('');
+  useEffect(() => void ensureOcrAssets(), []); // REQ-OFF-05: make sure screenshots can be read, offline too
 
   async function addFiles(list: FileList | null) {
     const picked = [...(list ?? [])];
@@ -42,6 +48,7 @@ export function InboxPage() {
         <button type="button" className={btn} onClick={() => camera.current?.click()}>Take photo</button>
         <button type="button" className={btn} onClick={() => setPasting((p) => !p)} aria-expanded={pasting}>Paste text</button>
       </div>
+      <OcrStatus />
       <p className="mb-4 text-sm text-ink-soft">Tip: your phone's share sheet may not list ExpRes. Use Choose files, or copy the SMS and use Paste text.</p>
 
       {pasting && (
@@ -59,6 +66,9 @@ export function InboxPage() {
         </form>
       )}
 
+      {shared > 0 && <p role="status" className="my-3 font-semibold" data-testid="share-result">✓ {shared} {shared === 1 ? 'item' : 'items'} added from the share sheet.</p>}
+      {skipped > 0 && <p role="status" className="my-3 text-sm font-semibold text-state-low">⚠ {skipped} shared {skipped === 1 ? 'file was' : 'files were'} skipped: use {ACCEPTED_TYPES_TEXT}.</p>}
+      {search.get('error') === 'share' && <p role="alert" className="my-3 font-semibold text-state-over" data-testid="share-error">⚠ Nothing was saved from that share. Try again, or use Choose files / Paste text.</p>}
       <Messages messages={messages} />
 
       {!items ? <p role="status">Loading…</p> : items.length === 0 ? (

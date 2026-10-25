@@ -26,13 +26,21 @@ export default defineConfig({
         display: 'standalone',
         theme_color: tokens['ex-ink'],
         background_color: tokens['ex-ground'],
+        // REQ-OFF-03: appear in the share sheet for images, PDFs and text (Android Chrome, app installed).
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: { title: 'title', text: 'text', url: 'url', files: [{ name: 'files', accept: ['image/*', 'application/pdf'] }] },
+        },
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      injectManifest: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
+      // ~7 MB of recognition data is cached on demand in the background (REQ-OFF-05), not at install.
+      injectManifest: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'], globIgnores: ['ocr/**'] },
     }),
     cloudflare(),
   ],
