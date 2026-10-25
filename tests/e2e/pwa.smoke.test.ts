@@ -31,9 +31,9 @@ test.describe('M0 PWA shell', () => {
     await expect(page.getByText('Ready for offline use')).toBeVisible();
 
     await context.setOffline(true);
-    await page.goto('/trips'); // a client route, answered by the navigation fallback
+    await page.goto('/grants'); // a client route, answered by the navigation fallback
     await expect(page.locator('[data-testid="brand-logo"]')).toHaveCount(1);
-    await expect(page.getByRole('heading', { name: 'Researcher workspace' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your grants' })).toBeVisible();
 
     await page.goto('/review/sample');
     await expect(page.getByRole('heading', { name: 'Sample claim' })).toBeVisible();

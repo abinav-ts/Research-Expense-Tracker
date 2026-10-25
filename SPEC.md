@@ -172,7 +172,9 @@ interface StatementRef { date; narration; debitMinor; refNo?; rowHash }   // onl
 interface Attachment { id; kind: 'proof' | 'supporting_doc';
   proofType?: 'upi_screenshot' | 'card_alert' | 'invoice' | 'ticket' | 'other';
   mime; sha256; width?; height?; blobKey }
-interface InboxItem { id; blobKey; receivedAt; ocr?: { text; fields } }   // shared proofs awaiting confirmation
+interface InboxItem { id; kind: 'file' | 'text'; receivedAt; proofType?;      // shared proofs awaiting confirmation
+  blobKey?; name?; mime?; sizeBytes?; sha256?; tooLarge?;                     // file items
+  text? }                                                                      // text items: already scrubbed of card digits and available-limit text (REQ-CAP-13)
 
 interface Flag { ruleId; severity: 'info' | 'warn' | 'error'; message; itemId }
 interface ClaimItem { id; date; description;
@@ -397,6 +399,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-26 v0.4.2 — M1 build. REQ-SET-01/02/03/06/07, BAL-01/02/06, CAP-01/02/04/06/11/13/14 marked `built`. Edits: flag icon and *flagged only* filter (CAP-06) and date-window flags on trip edit (SET-02) move to M2 with the rules engine; BAL-02 contrast is checked for the light theme (the brand has no dark theme); `InboxItem` gained `kind`, `text`, `proofType`, `name`, `mime`, `sizeBytes`, `sha256`, `tooLarge`; a confirmed text proof is stored as a `text/plain` attachment. REQ-DEMO-02 is partly built (sample grant, document, trip and four pending expenses; SMS proof is text, screenshot recognition arrives in M1b).
 - 2026-10-25 v0.4.1 — M0 build. REQ-NFR-06 reworded so `npm run trace` can stay green during the build (fails on built-but-untested requirements; `--strict` checks all MUSTs at M5); statuses `built` recorded inline for NFR-04 and NFR-06; build-plumbing packages listed under §5.1. REQ-BRAND-04 slogan rule clarified in `specs/07-branding.md` (loading markup is in `index.html`, outside `src/`).
 - 2026-10-25 v0.1 — Initial structure, stack, model, requirement index.
 - 2026-10-25 v0.4 — Branding: product named ExpRes; logo, colour and type prototype approved as the starting point; added `brand/` and `specs/07-branding.md` (REQ-BRAND-01..05); D-6 resolved.

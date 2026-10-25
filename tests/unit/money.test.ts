@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatInr, fxToInrMinor, parseAmount } from '../../src/shared/money.ts';
+import { formatInr, fxToInrMinor, minorToText, parseAmount } from '../../src/shared/money.ts';
 
 describe('REQ-NFR-04: integer money arithmetic', () => {
   it('REQ-NFR-04: converts foreign minor units with an integer micro-rate', () => {
@@ -69,5 +69,18 @@ describe('REQ-CAP-01: money input', () => {
     expect(parseAmount('1.234')).toEqual({ ok: false, error: 'At most 2 decimal places' });
     expect(parseAmount('12000.5', 0)).toEqual({ ok: false, error: 'This currency has no decimals' });
     expect(parseAmount('1.234', 3)).toEqual({ ok: true, value: 1234 });
+  });
+});
+
+describe('REQ-CAP-01: amounts back to editable text', () => {
+  it('REQ-CAP-01: minor units become plain editable text and parse back to the same value', () => {
+    expect(minorToText(245_050)).toBe('2450.5');
+    expect(minorToText(120_000)).toBe('1200');
+    expect(minorToText(5)).toBe('0.05');
+    expect(minorToText(12_000, 0)).toBe('12000');
+    expect(minorToText(1234, 3)).toBe('1.234');
+    for (const minor of [1, 99, 100, 245_050, 10_000_050]) {
+      expect(parseAmount(minorToText(minor))).toEqual({ ok: true, value: minor });
+    }
   });
 });

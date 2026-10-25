@@ -6,15 +6,15 @@ test.describe('M0 landing page', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByText('Nothing leaves your device until you submit a claim.')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Researcher/ })).toHaveAttribute('href', '/trips');
+    await expect(page.getByRole('link', { name: /Researcher/ })).toHaveAttribute('href', '/grants');
     await expect(page.getByRole('link', { name: /Reviewer \(sample claim\)/ })).toHaveAttribute('href', '/review/sample');
   });
 
   test('M0 landing: both entry points open a page inside the shell', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('link', { name: /Researcher/ }).first().click();
-    await expect(page).toHaveURL('/trips');
-    await expect(page.getByRole('heading', { name: 'Researcher workspace' })).toBeVisible();
+    await expect(page).toHaveURL('/grants');
+    await expect(page.getByRole('heading', { name: 'Your grants' })).toBeVisible();
     await page.goBack();
     await page.getByRole('link', { name: /Reviewer \(sample claim\)/ }).click();
     await expect(page).toHaveURL('/review/sample');

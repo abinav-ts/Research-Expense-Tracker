@@ -72,3 +72,12 @@ export function parseAmount(text: string, decimals = 2): ParseResult {
   const r = parseDecimal(text, decimals);
   return r.ok && r.value === 0 ? { ok: false, error: 'Enter an amount greater than 0' } : r;
 }
+
+/** Minor units back to editable text without grouping: (245050, 2) → "2450.5"; (12000, 0) → "12000". */
+export function minorToText(minor: number, exponent = 2): string {
+  assertMinor(minor, 'minor');
+  const scale = 10 ** exponent;
+  const whole = Math.trunc(Math.abs(minor) / scale);
+  const frac = String(Math.abs(minor) % scale).padStart(exponent, '0').replace(/0+$/, '');
+  return `${minor < 0 ? '-' : ''}${whole}${frac ? `.${frac}` : ''}`;
+}

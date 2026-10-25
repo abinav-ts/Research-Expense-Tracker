@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateGrantForm, type GrantFormInput } from '../../src/shared/grant.ts';
+import { deletionImpactText, validateGrantForm, type GrantFormInput } from '../../src/shared/grant.ts';
 
 const form: GrantFormInput = {
   name: 'DST Sample Grant', sponsor: 'Sample Agency', totalText: '1,00,000.00', utilisedText: '20,000.00',
@@ -47,5 +47,12 @@ describe('REQ-SET-01: grant validation and money parsing', () => {
     const r = validateGrantForm({ name: '', sponsor: '', totalText: 'abc', utilisedText: 'x', startDate: '', endDate: '' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(['endDate', 'name', 'startDate', 'totalText', 'utilisedText']);
+  });
+});
+
+describe('REQ-SET-01: delete confirmation wording', () => {
+  it('REQ-SET-01: says "2 trips, 7 expenses and 1 document will be deleted", with singular forms', () => {
+    expect(deletionImpactText({ trips: 2, expenses: 7, documents: 1 })).toBe('2 trips, 7 expenses and 1 document will be deleted');
+    expect(deletionImpactText({ trips: 1, expenses: 1, documents: 0 })).toBe('1 trip, 1 expense and 0 documents will be deleted');
   });
 });

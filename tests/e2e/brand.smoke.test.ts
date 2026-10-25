@@ -39,7 +39,7 @@ test.describe('REQ-BRAND-01: logo on every page', () => {
   });
 
   test('REQ-BRAND-01: clicking the logo on a researcher page goes home', async ({ page }) => {
-    await page.goto('/trips');
+    await page.goto('/grants');
     await page.getByRole('link', { name: 'ExpRes' }).click();
     await expect(page).toHaveURL('/');
   });

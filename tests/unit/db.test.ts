@@ -247,3 +247,13 @@ describe('REQ-CAP-06: editing and excluding expenses', () => {
     expect(await db.expenses.count()).toBe(0);
   });
 });
+
+describe('REQ-CAP-02: selection order', () => {
+  it('REQ-CAP-02: files added in the same millisecond still keep their selection order', async () => {
+    const db = new ExpResDb(`test-${++counter}`);
+    opened.push(db);
+    const repo = createRepo(db, { now: () => '2026-11-12T10:00:00.000Z' }); // a frozen clock: every stamp would tie
+    await repo.addInboxFiles(['a', 'b', 'c', 'd', 'e'].map((n) => file(`${n}.png`, 'image/png')));
+    expect((await db.inbox.orderBy('receivedAt').toArray()).map((i) => i.name)).toEqual(['a.png', 'b.png', 'c.png', 'd.png', 'e.png']);
+  });
+});

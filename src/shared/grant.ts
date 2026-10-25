@@ -92,3 +92,12 @@ export function validateGrantForm(input: GrantFormInput): GrantFormResult {
   if (Object.keys(errors).length || !total.ok) return { ok: false, errors };
   return { ok: true, value: { name, sponsor, totalMinor: total.value, utilisedBeforeMinor: utilised, startDate: input.startDate, endDate: input.endDate } };
 }
+
+// ---- Delete confirmation wording (REQ-SET-01) ----
+
+const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+/** "2 trips, 7 expenses and 1 document will be deleted" */
+export function deletionImpactText(impact: { trips: number; expenses: number; documents: number }): string {
+  return `${count(impact.trips, 'trip')}, ${count(impact.expenses, 'expense')} and ${count(impact.documents, 'document')} will be deleted`;
+}

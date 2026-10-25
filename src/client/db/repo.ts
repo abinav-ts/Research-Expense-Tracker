@@ -33,7 +33,14 @@ export interface ImportResult {
 
 export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
   const newId = options.newId ?? (() => crypto.randomUUID());
-  const now = options.now ?? (() => new Date().toISOString());
+  // Timestamps always increase, so items added in one import keep their selection order even within one millisecond.
+  const clock = options.now ?? (() => new Date().toISOString());
+  let lastStamp = 0;
+  const now = () => {
+    const t = Math.max(Date.parse(clock()), lastStamp + 1);
+    lastStamp = t;
+    return new Date(t).toISOString();
+  };
 
   /** Runs a write; any storage failure is reported as a StorageError. */
   async function write<T>(action: () => Promise<T>): Promise<T> {
@@ -181,6 +188,25 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
         await db.meta.put({ key: 'lastTripId', value: tripId });
       });
       return expense;
+    },
+    /** Adds an expense together with proof files (used by demo data and later by supporting documents). */
+    async addExpenseWithProofs(tripId: string, fields: ExpenseFields, proofs: { file: File; proofType: ProofType }[], source: Expense['source'] = 'proof'): Promise<Expense> {
+      const hashes = await Promise.all(proofs.map((p) => sha256Hex(p.file)));
+      let created!: Expense;
+      await write(() =>
+        db.transaction('rw', allTables, async () => {
+          const attachments: Attachment[] = [];
+          for (const [i, p] of proofs.entries()) {
+            attachments.push({ id: newId(), kind: 'proof', proofType: p.proofType, mime: p.file.type, name: p.file.name, sizeBytes: p.file.size, sha256: hashes[i]!, blobKey: await putBlob(p.file) });
+          }
+          const stamp = now();
+          created = { id: newId(), tripId, ...fields, inrStatus: 'pending', source, attachments, excluded: false, createdAt: stamp, updatedAt: stamp };
+          await db.expenses.add(created);
+          await rememberPayee(fields.payee, fields.categoryId);
+          await db.meta.put({ key: 'lastTripId', value: tripId });
+        }),
+      );
+      return created;
     },
     async updateExpense(id: string, fields: ExpenseFields): Promise<void> {
       await write(async () => {

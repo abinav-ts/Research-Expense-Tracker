@@ -7,7 +7,7 @@ Conventions used below: amounts are typed in rupees (Indian digit grouping and p
 
 ## Requirements
 
-### REQ-SET-01 — Grant CRUD [MUST] [agreed]
+### REQ-SET-01 — Grant CRUD [MUST] [built]
 The system shall let the user create, edit and delete a grant with name, sponsor, sanctioned total, amount already utilised, start and end dates. Deleting a grant with trips requires confirmation and deletes its trips, expenses and grant documents.
 Acceptance:
 - Given no grants, When the user creates "DST Sample Grant" (sponsor "Sample Agency", total ₹1,00,000.00, utilised before ₹20,000.00, 2026-04-01 to 2027-03-31), Then it appears on the home screen with ₹80,000.00 remaining and survives a reload.
@@ -17,19 +17,19 @@ Acceptance:
 - Grants are INR only (currency is not editable).
 Tests: tests/unit/grant.test.ts (validation, money parsing), tests/e2e/setup.smoke.test.ts
 
-### REQ-SET-02 — Trip linked to one grant [MUST] [agreed]
+### REQ-SET-02 — Trip linked to one grant [MUST] [built]
 The system shall let the user create a trip (conference name, city, country, start and end date, optional budget) linked to exactly one grant.
 Acceptance:
 - Given at least one grant, When the user creates "SampleConf 2026" in "Lisbon, Portugal" on 2026-11-10 to 2026-11-14 under the grant, Then it is listed under that grant and opens a trip screen.
 - Given no grants exist, When the user taps "Add trip", Then they are asked to create a grant first.
 - Validation: name, city, country required; end ≥ start; budget (optional) > 0.
 - Given trip dates outside the grant's start–end period, Then an inline warning is shown but saving is allowed.
-- Given a trip's dates are edited, Then date-window flags on its expenses are re-evaluated immediately (REQ-RULE-02).
+- Given a trip's dates are edited, Then date-window flags on its expenses are re-evaluated immediately (REQ-RULE-02). *(Flags do not exist yet: this line is delivered with the rules engine in M2.)*
 - Given a trip with 5 expenses is deleted after confirmation, Then its expenses go and the grant balance rises accordingly without reload.
 - The trip form has an optional "Default rates" section: add a currency code and an INR rate (used by REQ-SET-06).
 Tests: tests/unit/trip.test.ts, tests/e2e/setup.smoke.test.ts
 
-### REQ-SET-03 — Categories with eligibility, caps, proof flag [MUST] [agreed]
+### REQ-SET-03 — Categories with eligibility, caps, proof flag [MUST] [built]
 The system shall provide the default categories (SPEC §6) and store per grant: eligible (yes/no), optional per-trip cap, requires proof (yes/no), plus `travelBufferDays`. Defaults are seeded; UI editing is REQ-SET-04.
 Acceptance:
 - Given a new grant, Then it has exactly the 8 categories (Registration, Airfare, Rail/bus, Local transport, Accommodation, Meals, Visa/insurance, Other), each eligible = yes, requires proof = yes, no cap, and `travelBufferDays` = 2.
@@ -49,7 +49,7 @@ Acceptance:
 - A trip switcher on the trip screen moves between trips of the same grant.
 Tests: tests/unit/balance.test.ts
 
-### REQ-SET-06 — Foreign-currency expense with estimated rate [MUST] [agreed]
+### REQ-SET-06 — Foreign-currency expense with estimated rate [MUST] [built]
 The system shall let the user record an expense in any ISO currency (original amount + currency) with an estimated INR rate. The trip stores a default estimated rate per currency (`fxRatesMicro`), prefilled on new expenses and editable per expense. `inrMinor` is computed with integer arithmetic (half-up rounding) and marked `pending`. Minor-unit exponent follows ISO 4217.
 Acceptance:
 - Given a trip default of 1 EUR = ₹95.00 and an expense of €89.00, Then `inrMinor` = 845500 paise (₹8,455.00) and status is `pending`.
@@ -61,7 +61,7 @@ Acceptance:
 - The rate is an estimate and is labelled "Estimated" wherever the INR amount is shown until confirmed.
 Tests: tests/unit/fx.test.ts
 
-### REQ-SET-07 — Grant documents (store only) [MUST] [agreed]
+### REQ-SET-07 — Grant documents (store only) [MUST] [built]
 The system shall let the user attach files (PDF/images, e.g. sanction letter, budget sheet) to a grant, list them, open them and remove them. Files are stored locally; nothing is read, parsed or recognised, and the sanctioned amount is the user's manual entry (trusted).
 Acceptance:
 - Given a grant, When the user adds a PDF and a JPG, Then both are listed with name, type and size, open after reload and offline, and can be removed (with confirmation).
@@ -76,7 +76,7 @@ Acceptance:
 - Given 2 documents with one toggled off, Then the preview lists only the included one and the PDF appendix contains only it.
 Tests: tests/unit/claim.test.ts
 
-### REQ-BAL-01 — Balance calculation and live update [MUST] [agreed]
+### REQ-BAL-01 — Balance calculation and live update [MUST] [built]
 The system shall compute `remaining = totalMinor − utilisedBeforeMinor − Σ(INR amount of non-excluded expenses across all trips of the grant)` and update it immediately after any expense is added, edited, excluded or deleted, on the home and trip screens.
 Acceptance:
 - Given a grant of ₹1,00,000 with ₹20,000 utilised before, and expenses of ₹15,000 and ₹5,000 on one trip, When the home screen is shown, Then remaining is ₹60,000.
@@ -87,11 +87,11 @@ Acceptance:
 - The balance function is pure and takes no clock or storage input.
 Tests: tests/unit/balance.test.ts
 
-### REQ-BAL-02 — Indicator states [MUST] [agreed]
+### REQ-BAL-02 — Indicator states [MUST] [built]
 The indicator shall show amount remaining, % remaining (of the sanctioned total) and a state label: *Healthy* (≥ 20%), *Low* (< 20% and ≥ 0), *Overspent* (< 0). State is conveyed by text and icon as well as colour.
 Acceptance:
 - Given total ₹1,00,000: remaining ₹20,000.00 (exactly 20%) → Healthy; ₹19,999.99 → Low; ₹0.00 → Low; −₹0.01 → Overspent (shown as "Overspent by ₹0.01").
-- Each state has a distinct word and icon, text contrast ≥ 4.5:1 in light and dark themes, and an accessible label such as "Grant balance: ₹60,000 remaining, 60 percent, Healthy".
+- Each state has a distinct word and icon, text contrast ≥ 4.5:1 (checked on the brand tokens for the light theme; the brand defines no dark theme yet), and an accessible label such as "Grant balance: ₹60,000 remaining, 60 percent, Healthy".
 - The indicator appears on the home screen (per grant) and the trip screen, and changes within one render after any expense change.
 Tests: tests/unit/balance.test.ts (state function), tests/e2e/balance.smoke.test.ts
 
@@ -110,7 +110,7 @@ Tests: tests/unit/balance.test.ts
 Acceptance:
 - While typing an amount on the confirm form, "Balance after this: ₹X" updates; editing an existing expense accounts for its old amount.
 
-### REQ-BAL-06 — Confirmed vs pending-verification split [MUST] [agreed]
+### REQ-BAL-06 — Confirmed vs pending-verification split [MUST] [built]
 The indicator shall show how much of the spent amount is pending verification (expenses entered from proofs or estimates and not yet matched to a statement debit), e.g. "₹58,400 left · ₹6,200 of spend is pending verification". Matching a statement debit moves the amount from pending to confirmed and changes the remaining balance by the difference (zero for an exact INR match).
 Acceptance:
 - Given remaining ₹60,000.00 including one pending expense of ₹8,455.00 (an estimate), When it is matched to a statement debit of ₹8,612.34, Then remaining is ₹59,842.66, pending spend drops by ₹8,455.00 and confirmed spend rises by ₹8,612.34.
