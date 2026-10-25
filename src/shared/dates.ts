@@ -41,7 +41,7 @@ export function findDateInText(text: string): string | undefined {
   const month = (word: string) => MONTHS.indexOf(word.slice(0, 3).toLowerCase()) + 1;
 
   for (const m of text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) add(m.index, makeDate(+m[1]!, +m[2]!, +m[3]!));
-  for (const m of text.matchAll(new RegExp(`\\b(\\d{1,2})[-\\s/.]*(${MONTH_WORDS})[-\\s/.,]*(\\d{4}|\\d{2})\\b`, 'gi'))) {
+  for (const m of text.matchAll(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?[-\\s/.]*(${MONTH_WORDS})[-\\s/.,]*(\\d{4}|\\d{2})\\b`, 'gi'))) {
     add(m.index, makeDate(year(m[3]!), month(m[2]!), +m[1]!));
   }
   for (const m of text.matchAll(new RegExp(`\\b(${MONTH_WORDS})[-\\s/.]*(\\d{1,2})(?:st|nd|rd|th)?,?[-\\s/.]*(\\d{4})\\b`, 'gi'))) {

@@ -100,6 +100,81 @@ test.describe('REQ-CAP-13: the owner\'s own SMS format', () => {
   });
 });
 
+test.describe('REQ-CAP-15: tap to assign', () => {
+  const UNKNOWN = 'Alert 2399 INR XYZ MART 25/10/26 thanks'; // amount after the currency and no merchant marker: nothing to anchor on
+  const word = (page: Page, text: string) => page.getByTestId('assigner-words').getByRole('button', { name: text, exact: true });
+
+  test('REQ-CAP-15: a format the parser cannot read is completed with taps: payee, amount, date', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, UNKNOWN);
+    await page.getByRole('link', { name: 'Review' }).click();
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue(''); // nothing guessed for these two
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('');
+
+    await expect(page.getByRole('button', { name: 'Use as payee' })).toBeDisabled();
+    await word(page, 'XYZ').click();
+    await word(page, 'MART').click();
+    await expect(word(page, 'XYZ')).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: 'Use as payee' }).click();
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('XYZ MART');
+    await expect(word(page, 'XYZ')).toHaveAttribute('aria-pressed', 'false'); // selection cleared
+    await expect(page.getByTestId('assigner-note')).toContainText('Payee set to XYZ MART');
+
+    await word(page, '2399').click();
+    await page.getByRole('button', { name: 'Use as amount' }).click();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('2399');
+
+    await word(page, '25/10/26').click();
+    await page.getByRole('button', { name: 'Use as date' }).click();
+    await expect(page.getByLabel('Date')).toHaveValue('2026-10-25');
+
+    await page.getByRole('button', { name: 'Confirm expense' }).click();
+    await expect(page.getByTestId('inbox-empty')).toBeVisible();
+    await page.getByRole('link', { name: 'Grants' }).click();
+    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
+    await expect(remaining(page)).toHaveText('₹77,601.00 left');
+  });
+
+  test('REQ-CAP-15: an unreadable selection shows a message and leaves the form unchanged; Clear empties the selection', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, UNKNOWN);
+    await page.getByRole('link', { name: 'Review' }).click();
+    await word(page, 'Alert').click();
+    await page.getByRole('button', { name: 'Use as amount' }).click();
+    await expect(page.getByTestId('assigner-note')).toContainText('"Alert" does not look like an amount.');
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('');
+    await page.getByRole('button', { name: 'Use as date' }).click();
+    await expect(page.getByTestId('assigner-note')).toContainText('does not look like a date');
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(word(page, 'Alert')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByRole('button', { name: 'Use as reference' })).toBeDisabled();
+  });
+
+  test('REQ-CAP-15: words are keyboard-usable buttons at least 44 px tall', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, UNKNOWN);
+    await page.getByRole('link', { name: 'Review' }).click();
+    const box = await word(page, 'Alert').boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await word(page, 'Alert').focus();
+    await page.keyboard.press('Space');
+    await expect(word(page, 'Alert')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('REQ-CAP-15: a selection assigned for one Inbox item is not carried onto the next item', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, 'second message ZED STORE');
+    await pasteText(page, UNKNOWN);
+    await page.getByTestId('inbox-item').filter({ hasText: 'XYZ MART' }).getByRole('link', { name: 'Review' }).click();
+    await word(page, 'XYZ').click();
+    await page.getByRole('button', { name: 'Use as payee' }).click();
+    await page.getByLabel(/^Amount/).fill('10');
+    await page.getByRole('button', { name: 'Confirm expense' }).click();
+    await expect(page.getByTestId('inbox-text')).toContainText('second message');
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('');
+  });
+});
+
 test.describe('REQ-CAP-04: Inbox confirm and discard', () => {
   test('REQ-CAP-04: confirming creates the expense with the proof attached, drops the balance, and opens the next item', async ({ page }) => {
     await withTrip(page);

@@ -20,6 +20,8 @@ interface Props {
   initial?: Partial<ExpenseFormInput>;
   submitLabel: string;
   onSubmit: (fields: ExpenseFields) => Promise<void>;
+  /** Values pushed in from outside (tap-to-assign, REQ-CAP-15). A new `id` applies the values once. */
+  patch?: { id: number; values: Partial<ExpenseFormInput> } | undefined;
   /** Rendered above the fields (e.g. the trip and proof-type pickers in the Inbox). */
   top?: ReactNode;
   /** Rendered next to the submit button. */
@@ -31,7 +33,7 @@ const blank = (): ExpenseFormInput => ({
 });
 
 /** REQ-CAP-01 form, shared by manual add, expense detail and the Inbox confirm screen. */
-export function ExpenseFormFields({ tripRates, tripWindow, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
+export function ExpenseFormFields({ tripRates, tripWindow, patch, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
   const [form, setForm] = useState<ExpenseFormInput>({ ...blank(), ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormInput, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -45,6 +47,14 @@ export function ExpenseFormFields({ tripRates, tripWindow, memory, initial, subm
     const rate = tripRates?.[code];
     if (!isInr && rate && !form.rateText) setForm((f) => ({ ...f, rateText: microToText(rate) }));
   }, [form.currency, tripRates]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const appliedPatch = useRef(0);
+  useEffect(() => {
+    if (!patch || patch.id === appliedPatch.current) return;
+    appliedPatch.current = patch.id;
+    setForm((f) => ({ ...f, ...patch.values }));
+    setErrors({});
+  }, [patch]);
 
   const suggestion = suggestCategory(form.payee, memory);
   // A remembered choice is pre-selected until the user picks something else; keyword guesses are never applied silently.

@@ -242,6 +242,8 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-CAP-12 | Backup export/import (JSON) | S | 02 |
 | REQ-CAP-13 | Paste or share SMS/notification text → parse (no OCR needed) | M | 02 |
 | REQ-CAP-14 | Category suggestion from merchant, learned per payee; user confirms | M | 02 |
+| REQ-CAP-15 | Tap words of an SMS/OCR text to assign them to Amount/Date/Payee/Reference | M | 02 |
+| REQ-CAP-16 | Learn anchor words from the user's corrections (no values stored) | S | 02 |
 | REQ-CSV-01 | Upload and parse CSV in-browser | M | 03 |
 | REQ-CSV-02 | Column mapping and date format | M | 03 |
 | REQ-CSV-03 | Transaction table: search, window filter, select | M | 03 |
@@ -399,6 +401,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-26 v0.4.4 — Banks' SMS formats cannot all be anticipated, and sending text to a model would break REQ-PRIV-01. Added REQ-CAP-15 (tap words to assign them to a field: the guarantee, MUST) and REQ-CAP-16 (learn anchor words from corrections: SHOULD, scheduled after M1b).
 - 2026-10-26 v0.4.3 — Owner's real SMS ("Rs 2399 spent@ ABDUSROLLS on 25OCT26 … Bal Rs.123456 Ref 34567") exposed format-specific parsing: payee after "@", dates without separators, short references, and balance figures left in the stored text. Parser widened and balances now scrubbed (REQ-CAP-13). Same session: REQ-RULE-02 built early, so a date outside the trip window warns in the form and flags the expense (REQ-CAP-06 chip and filter, REQ-SET-02 re-evaluation).
 - 2026-10-26 v0.4.2 — M1 build. REQ-SET-01/02/03/06/07, BAL-01/02/06, CAP-01/02/04/06/11/13/14 marked `built`. Edits: flag icon and *flagged only* filter (CAP-06) and date-window flags on trip edit (SET-02) move to M2 with the rules engine; BAL-02 contrast is checked for the light theme (the brand has no dark theme); `InboxItem` gained `kind`, `text`, `proofType`, `name`, `mime`, `sizeBytes`, `sha256`, `tooLarge`; a confirmed text proof is stored as a `text/plain` attachment. REQ-DEMO-02 is partly built (sample grant, document, trip and four pending expenses; SMS proof is text, screenshot recognition arrives in M1b).
 - 2026-10-25 v0.4.1 — M0 build. REQ-NFR-06 reworded so `npm run trace` can stay green during the build (fails on built-but-untested requirements; `--strict` checks all MUSTs at M5); statuses `built` recorded inline for NFR-04 and NFR-06; build-plumbing packages listed under §5.1. REQ-BRAND-04 slogan rule clarified in `specs/07-branding.md` (loading markup is in `index.html`, outside `src/`).

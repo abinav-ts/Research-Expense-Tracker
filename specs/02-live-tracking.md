@@ -128,6 +128,20 @@ Acceptance:
 - Given no category chosen, Then the expense cannot be claimed (REQ-RULE-12).
 Tests: tests/unit/categoriser.test.ts
 
+### REQ-CAP-15 — Tap to assign text to a field [MUST] [built]
+The system shall show the text of an Inbox item (pasted or shared SMS now; text read from a screenshot by REQ-CAP-05) as tappable words, and let the user assign any selection to Amount, Date, Payee or Reference. This is the guarantee for bank formats the parser does not recognise: the parser only prefills, and a few taps always complete the form.
+Acceptance:
+- Given the text "Alert 2399 INR XYZ MART 25/10/26 thanks", where the parser finds no amount or payee, When the user taps "XYZ" and "MART" and chooses Payee, Then the Payee field is "XYZ MART" and the selection clears.
+- Selecting "2399" and choosing Amount sets the amount to 2399; selecting "Rs.2,399.00" or "INR 2399" also sets the currency; selecting a date such as "25OCT26" and choosing Date sets 2026-10-25.
+- Given a selection that cannot be read as the chosen field (for example "hello" as Amount or Date), Then a message says so and the form is unchanged.
+- Words are tappable buttons with a pressed state, at least 44 px tall (REQ-NFR-01), usable by keyboard; the four assign buttons are disabled until something is selected; Clear empties the selection.
+- Text that was scrubbed (card digits, balances) is not shown, so it cannot be assigned (REQ-CAP-13).
+- Assigning never saves anything: the user still confirms the expense.
+Tests: tests/unit/assign.test.ts, tests/e2e/inbox.smoke.test.ts
+
+### REQ-CAP-16 — Learn from corrections [SHOULD] [agreed]
+After the user confirms an expense made from text, the system shall remember the words that surrounded each confirmed value (for example "spent@ ⟨payee⟩ on", "Ref ⟨reference⟩") and use them first on the next message in the same format. Only anchor words are stored, never amounts, merchants, dates or references; the memory stays on the device, can be cleared in Settings and is part of the backup (REQ-CAP-12). Acceptance criteria to be written when this is scheduled (after M1b).
+
 ## Open questions
 - Which UPI/bank apps and card-alert SMS formats matter most (D-3)? (Not blocking: the demo uses synthetic fixtures.)
 - Should confirming an expense warn immediately if it breaks a rule? (Yes, via REQ-RULE flags shown inline.)

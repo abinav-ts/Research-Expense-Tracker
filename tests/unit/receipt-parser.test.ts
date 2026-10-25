@@ -89,6 +89,12 @@ describe('REQ-CAP-13: bank SMS formats beyond the first samples', () => {
     }
   });
 
+  it('REQ-CAP-13: a labelled payee stops before a date or an end word, and "25th Oct 2026" reads as a date', () => {
+    expect(parseReceiptText('Rs 10 debited towards XYZ MART 25/10/26').payee).toBe('XYZ MART');
+    expect(parseReceiptText('Paid to RAMESH STORES on 12 Nov 2026').payee).toBe('RAMESH STORES');
+    expect(parseReceiptText('Rs 10 spent at X on 25th Oct 2026').date).toBe('2026-10-25');
+  });
+
   it('REQ-CAP-13: ordinary words are not mistaken for dates ("5 Marketing 2026") or references ("refund")', () => {
     expect(parseReceiptText('Rs 10 spent at X, 5 Marketing 2026').date).toBeUndefined();
     expect(parseReceiptText('Rs 10 paid, refund pending').reference).toBeUndefined();

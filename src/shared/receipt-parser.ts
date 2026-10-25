@@ -64,7 +64,7 @@ const PAYEE_END = '(?:on|dated|ref|txn|upi|avl|avail|bal|balance|for|using|via|f
 
 function pickPayee(text: string, hasAmount: boolean): string | undefined {
   const clean = (s: string) => s.replace(/\s+/g, ' ').replace(/[.,:;\-@]+$/, '').trim();
-  const labelled = /(?:paid to|sent to|transferred to|trf to|payee|merchant|paid at|towards)\s*[:\-]?\s*([^\n\r]+)/i.exec(text);
+  const labelled = new RegExp(`(?:paid to|sent to|transferred to|trf to|payee|merchant|paid at|towards)\\s*[:\\-]?\\s*([^\\n\\r]+?)(?=\\s+${PAYEE_END}\\b|\\s+\\d{1,2}[-/.]\\d{1,2}[-/.]\\d{2,4}\\b|[\\n\\r]|$)`, 'i').exec(text);
   if (labelled?.[1] && /^[A-Za-z0-9]/.test(labelled[1].trim())) return clean(labelled[1]).slice(0, 80) || undefined;
   if (!hasAmount) return undefined; // the loose "at <place>" form is only trusted in a payment message
   // "at MERCHANT", "@ MERCHANT" and "spent@MERCHANT" are all common in bank SMS.

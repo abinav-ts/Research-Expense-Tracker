@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { currencyExponent } from '../../../shared/currency.ts';
+import type { ExpenseFormInput } from '../../../shared/expense-form.ts';
 import { normaliseRules } from '../../../shared/grant.ts';
 import { minorToText } from '../../../shared/money.ts';
 import { parseReceiptText } from '../../../shared/receipt-parser.ts';
@@ -14,9 +15,10 @@ import { attempt } from '../../lib/errors.ts';
 import { todayLocal } from '../../lib/today.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { ExpenseFormFields } from './ExpenseFormFields.tsx';
+import { TextAssigner } from './TextAssigner.tsx';
 import { ProofView } from './ProofView.tsx';
 
-function Confirm({ item, next }: { item: InboxItem; next?: string | undefined }) {
+function Confirm({ item, next, patch }: { item: InboxItem; next?: string | undefined; patch: { id: number; values: Partial<ExpenseFormInput> } | undefined }) {
   const navigate = useNavigate();
   const choices = useLive(async () => ({ trips: await queries.tripChoices(), last: await repo.lastTripId(), memory: await repo.payeeMemory() }));
   const [tripId, setTripId] = useState<string>();
@@ -45,7 +47,7 @@ function Confirm({ item, next }: { item: InboxItem; next?: string | undefined })
   return (
     <>
       <ExpenseFormFields
-        key={item.id} tripRates={chosen.trip.fxRatesMicro} tripWindow={{ trip: chosen.trip, bufferDays: normaliseRules(chosen.grant.rules).travelBufferDays }} memory={choices.memory} initial={initial} submitLabel="Confirm expense"
+        key={item.id} patch={patch} tripRates={chosen.trip.fxRatesMicro} tripWindow={{ trip: chosen.trip, bufferDays: normaliseRules(chosen.grant.rules).travelBufferDays }} memory={choices.memory} initial={initial} submitLabel="Confirm expense"
         top={
           <>
             <SelectField id="trip" label="Trip" value={chosen.trip.id} onChange={setTripId}
@@ -76,6 +78,7 @@ function Confirm({ item, next }: { item: InboxItem; next?: string | undefined })
 /** REQ-CAP-04: the proof beside an editable expense form; confirming creates the expense and opens the next item. */
 export function InboxItemPage() {
   const { itemId = '' } = useParams();
+  const [patch, setPatch] = useState<{ id: number; itemId: string; values: Partial<ExpenseFormInput> }>();
   const data = useLive(async () => ({ item: (await queries.inboxItem(itemId)) ?? null, list: await queries.inboxList() }), [itemId]);
   if (!data) return <p role="status">Loading…</p>;
   if (!data.item) return <p role="alert">That Inbox item is gone (it may have been confirmed). <Link to="/inbox" className="underline">Back to Inbox</Link></p>;
@@ -88,9 +91,10 @@ export function InboxItemPage() {
         <div>
           {item.kind === 'file' && <ProofView file={item} />}
           {item.kind === 'text' && <pre className="mb-4 rounded-lg border border-line bg-surface p-3 text-sm whitespace-pre-wrap" data-testid="inbox-text">{item.text}</pre>}
+          {item.kind === 'text' && <TextAssigner key={item.id} text={item.text ?? ''} onAssign={(values) => setPatch((p) => ({ id: (p?.id ?? 0) + 1, itemId: item.id, values }))} />}
           {item.kind === 'file' && <p className="mb-4 text-sm text-ink-soft">Type the amount, date and payee from the proof. Reading screenshots automatically comes later.</p>}
         </div>
-        <Confirm key={item.id} item={item} next={next} />
+        <Confirm key={item.id} item={item} next={next} patch={patch?.itemId === item.id ? patch : undefined} />
       </div>
     </div>
   );
