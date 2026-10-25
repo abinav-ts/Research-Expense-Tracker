@@ -1,0 +1,51 @@
+{
+  "name": "expres",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ExpRes: privacy-first, offline-capable grant expense tracking",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node scripts/check-brand.ts && vitest run",
+    "test:e2e": "playwright test",
+    "trace": "node scripts/trace.ts",
+    "typecheck": "wrangler types && tsc -p tsconfig.client.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.node.json",
+    "types": "wrangler types",
+    "db:local": "wrangler d1 migrations apply DB --local",
+    "icons": "node scripts/make-icons.ts",
+    "deploy": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
+    "hono": "4.13.14",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-router": "8.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.65.0",
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "5.0.5",
+    "workbox-build": "7.4.1",
+    "workbox-core": "7.4.1",
+    "workbox-precaching": "7.4.1",
+    "workbox-routing": "7.4.1",
+    "workbox-window": "7.4.1",
+    "wrangler": "4.152.0"
+  }
+}

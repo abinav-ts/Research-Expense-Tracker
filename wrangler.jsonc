@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "expres",
+  "main": "src/server/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    // The built PWA is served by Cloudflare; unknown paths fall back to index.html (client routes).
+    "not_found_handling": "single-page-application",
+    // Requests to /api/* always reach our Hono Worker.
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "expres",
+      // Replace with the id printed by `npx wrangler d1 create expres` (see README).
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": { "enabled": true }
+}
