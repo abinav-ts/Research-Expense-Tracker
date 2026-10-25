@@ -13,8 +13,8 @@
     {
       "binding": "DB",
       "database_name": "expres",
-      // Replace with the id printed by `npx wrangler d1 create expres` (see README).
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Created with `npx wrangler d1 create expres`.
+      "database_id": "b0f4c173-028c-430a-ba02-b7af9b1323dd",
       "migrations_dir": "migrations"
     }
   ],
