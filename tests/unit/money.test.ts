@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatInr, fxToInrMinor } from '../../src/shared/money.ts';
+import { formatInr, fxToInrMinor, parseAmount } from '../../src/shared/money.ts';
 
 describe('REQ-NFR-04: integer money arithmetic', () => {
   it('REQ-NFR-04: converts foreign minor units with an integer micro-rate', () => {
@@ -45,5 +45,29 @@ describe('REQ-NFR-04: integer money arithmetic', () => {
 
   it('REQ-NFR-04: refuses to format a fractional paise value', () => {
     expect(() => formatInr(12.5)).toThrow(RangeError);
+  });
+});
+
+describe('REQ-CAP-01: money input', () => {
+  it('REQ-CAP-01: accepts 2,450.50, 2450.5, ₹ 1,200 and Indian grouping 1,00,000.50', () => {
+    expect(parseAmount('2,450.50')).toEqual({ ok: true, value: 245050 });
+    expect(parseAmount('2450.5')).toEqual({ ok: true, value: 245050 });
+    expect(parseAmount('₹ 1,200')).toEqual({ ok: true, value: 120000 });
+    expect(parseAmount('1,00,000.50')).toEqual({ ok: true, value: 10000050 });
+    expect(parseAmount('Rs. 99')).toEqual({ ok: true, value: 9900 });
+  });
+
+  it('REQ-CAP-01: rejects 0, -5, abc, empty and misplaced commas with a message', () => {
+    for (const bad of ['0', '0.00', '-5', 'abc', '', '12,34', '1,2,3', '1..5']) {
+      const r = parseAmount(bad);
+      expect(r.ok, bad).toBe(false);
+    }
+    expect(parseAmount('0')).toEqual({ ok: false, error: 'Enter an amount greater than 0' });
+  });
+
+  it('REQ-CAP-01: rejects more decimals than the currency allows', () => {
+    expect(parseAmount('1.234')).toEqual({ ok: false, error: 'At most 2 decimal places' });
+    expect(parseAmount('12000.5', 0)).toEqual({ ok: false, error: 'This currency has no decimals' });
+    expect(parseAmount('1.234', 3)).toEqual({ ok: true, value: 1234 });
   });
 });
