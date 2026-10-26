@@ -2,6 +2,8 @@
 // with a message the UI shows; nothing fails silently (REQ-CAP-11).
 import { payeeKey } from '../../shared/categoriser.ts';
 import { learnAnchors, type Anchor } from '../../shared/learn.ts';
+import { pairFields, statementRefOf, unlinkFields, canBeMatched } from '../../shared/reconcile.ts';
+import type { StatementMapping, StatementRow } from '../../shared/statement-map.ts';
 import { checkFile, TOO_LARGE_NOTE } from '../../shared/files.ts';
 import { defaultRules, normaliseRules } from '../../shared/grant.ts';
 import type { ExpenseFields } from '../../shared/expense-form.ts';
@@ -86,7 +88,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
       throw new StorageError();
     }
   }
-  const allTables = [db.grants, db.trips, db.expenses, db.grantDocs, db.inbox, db.blobs, db.payeeCategories, db.meta, db.payees, db.anchors];
+  const allTables = [db.grants, db.trips, db.expenses, db.grantDocs, db.inbox, db.blobs, db.payeeCategories, db.meta, db.payees, db.anchors, db.bankProfiles];
 
   /**
    * Decides how a file is stored. Call this BEFORE opening a database transaction: reading a file's bytes is not
@@ -126,6 +128,15 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
       const known = await db.anchors.get(id);
       await db.anchors.put({ ...d, id, count: (known?.count ?? 0) + 1, updatedAt: now() });
     }
+  }
+
+  /** Fingerprints of statement rows already used by any expense of the grant this trip belongs to. */
+  async function usedHashes(tripId: string): Promise<Set<string>> {
+    const trip = await db.trips.get(tripId);
+    if (!trip) return new Set();
+    const tripIds = (await db.trips.where('grantId').equals(trip.grantId).primaryKeys()) as string[];
+    const expenses = await db.expenses.where('tripId').anyOf(tripIds).toArray();
+    return new Set(expenses.flatMap((e) => (e.statementRef ? [e.statementRef.rowHash] : [])));
   }
 
   async function tripExpenseBlobKeys(tripIds: string[]): Promise<{ expenseIds: string[]; blobKeys: string[] }> {
@@ -392,6 +403,60 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
     async knownPayees(): Promise<string[]> {
       return (await db.payees.orderBy('count').reverse().limit(300).toArray()).map((p) => p.name);
     },
+    // ---- bank statement (REQ-CSV-02, -05, -08) ----
+    async getBankProfile(key: string): Promise<StatementMapping | undefined> {
+      return (await db.bankProfiles.get(key))?.mapping;
+    },
+    async saveBankProfile(key: string, mapping: StatementMapping): Promise<void> {
+      await write(async () => void (await db.bankProfiles.put({ key, mapping, updatedAt: now() })));
+    },
+    /** Pairs a tracked expense with a statement debit: the debit becomes its amount and it is confirmed (REQ-CSV-08). */
+    async confirmStatementPair(expenseId: string, row: StatementRow): Promise<void> {
+      await write(() =>
+        db.transaction('rw', [db.expenses, db.trips], async () => {
+          const expense = await db.expenses.get(expenseId);
+          if (!expense || !canBeMatched(expense)) throw new StorageError('That expense can no longer be matched.');
+          if ((await usedHashes(expense.tripId)).has(row.rowHash)) throw new StorageError('That statement line is already used by another expense.');
+          await db.expenses.put({ ...expense, ...pairFields(row), updatedAt: now() });
+        }),
+      );
+    },
+    /** Frees the debit and returns the expense to pending at its own amount. */
+    async unlinkStatementPair(expenseId: string): Promise<void> {
+      await write(async () => {
+        const expense = await db.expenses.get(expenseId);
+        if (!expense?.statementRef) return;
+        const { statementRef: _gone, ...rest } = expense;
+        await db.expenses.put({ ...rest, ...unlinkFields(expense), updatedAt: now() });
+      });
+    },
+    /**
+     * Ticked rows become expenses of the trip (source "statement", confirmed, bank-paid). A row already used by an expense of
+     * the same grant is skipped, so adding the same file twice adds nothing (REQ-CSV-05). Their narrations are not added to
+     * the payee list: they are the bank's wording, not the user's.
+     */
+    async addStatementExpenses(tripId: string, items: { row: StatementRow; categoryId?: CategoryId }[]): Promise<{ added: number; skipped: number }> {
+      let added = 0;
+      await write(() =>
+        db.transaction('rw', [db.expenses, db.trips, db.meta], async () => {
+          const used = await usedHashes(tripId);
+          for (const { row, categoryId } of items) {
+            if (used.has(row.rowHash)) continue;
+            used.add(row.rowHash);
+            const stamp = now();
+            await db.expenses.add({
+              id: newId(), tripId, date: row.date, payee: row.narration.slice(0, 80) || 'Bank debit', originalMinor: row.debitMinor, originalCurrency: 'INR',
+              inrMinor: row.debitMinor, inrStatus: 'confirmed', paymentMode: 'bank', source: 'statement', statementRef: statementRefOf(row),
+              ...(row.refNo && { reference: row.refNo }), ...(categoryId && { categoryId }), attachments: [], excluded: false, createdAt: stamp, updatedAt: stamp,
+            });
+            added += 1;
+          }
+          await db.meta.put({ key: 'lastTripId', value: tripId });
+        }),
+      );
+      return { added, skipped: items.length - added };
+    },
+
     /** Every remembered payee with its remembered category, A to Z (REQ-CAP-17). */
     async listPayees(): Promise<{ key: string; name: string; count: number; categoryId?: CategoryId }[]> {
       const [payees, categories] = await Promise.all([db.payees.toArray(), db.payeeCategories.toArray()]);

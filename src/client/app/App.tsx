@@ -8,6 +8,7 @@ import { InboxItemPage } from '../features/live/InboxItemPage.tsx';
 import { InboxPage } from '../features/live/InboxPage.tsx';
 import { TripPage } from '../features/live/TripPage.tsx';
 import { SettingsPage } from '../features/settings/SettingsPage.tsx';
+import { StatementPage } from '../features/statement/StatementPage.tsx';
 import { GrantFormPage } from '../features/setup/GrantFormPage.tsx';
 import { GrantPage } from '../features/setup/GrantPage.tsx';
 import { GrantsPage } from '../features/setup/GrantsPage.tsx';
@@ -24,6 +25,7 @@ const screens: Record<string, ReactElement> = {
   'trip-new': <TripFormPage />,
   trip: <TripPage />,
   'trip-edit': <TripFormPage />,
+  statement: <StatementPage />,
   'expense-new': <ExpenseNewPage />,
   expense: <ExpensePage />,
   inbox: <InboxPage />,

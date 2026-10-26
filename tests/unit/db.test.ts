@@ -337,7 +337,7 @@ describe('REQ-CAP-11: opening older data with a newer app version', () => {
     const db = new ExpResDb(name);
     opened.push(db);
     await db.open();
-    expect(db.verno).toBe(2);
+    expect(db.verno).toBe(3); // the current schema version: the upgrade runs through every step
     expect(await db.grants.count()).toBe(1);
     expect(await db.expenses.count()).toBe(3);
     const payees = (await db.payees.toArray()).sort((a, b) => b.count - a.count);
@@ -445,5 +445,90 @@ describe('REQ-CAP-17: the payee list', () => {
     expect((await repo.listPayees()).map((p) => p.name)).toEqual(['Cafe Sample']);
     expect((await repo.payeeMemory()).has('blossom bock house')).toBe(false);
     expect(await db.expenses.count()).toBe(2);
+  });
+});
+
+describe('REQ-CSV-05, REQ-CSV-08: statement pairs and ticked rows in storage', () => {
+  const stmtRow = (hash: string, date: string, debitMinor: number, narration = 'UPI-SHOP') => ({ line: 9, date, narration, debitMinor, rowHash: hash, refNo: 'R1' });
+  async function withTrip() {
+    const f = fresh();
+    const grant = await f.repo.createGrant(grantFields);
+    const trip = await f.repo.createTrip(grant.id, tripFields);
+    const second = await f.repo.createTrip(grant.id, { ...tripFields, name: 'Second' });
+    return { ...f, grant, trip, second };
+  }
+
+  it('REQ-CSV-08: pairing confirms the expense at the statement amount and keeps only the statement fields; unlinking puts it back', async () => {
+    const { db, repo, trip } = await withTrip();
+    const e = await repo.addExpense(trip.id, expenseFields({ originalMinor: 8900, originalCurrency: 'EUR', inrMinor: 845_500, estimatedRateMicro: 95_000_000 })); // €89.00 at ₹95.00
+    await repo.confirmStatementPair(e.id, stmtRow('h1', '2026-11-14', 861_234, 'POS LISBON'));
+    const paired = (await db.expenses.get(e.id))!;
+    expect(paired).toMatchObject({ inrMinor: 861_234, inrStatus: 'confirmed', statementRef: { date: '2026-11-14', narration: 'POS LISBON', debitMinor: 861_234, refNo: 'R1', rowHash: 'h1' } });
+    expect(Object.keys(paired.statementRef!).sort()).toEqual(['date', 'debitMinor', 'narration', 'refNo', 'rowHash']);
+
+    await repo.unlinkStatementPair(e.id);
+    const back = (await db.expenses.get(e.id))!;
+    expect(back.statementRef).toBeUndefined();
+    expect(back).toMatchObject({ inrStatus: 'pending', inrMinor: 845_500 }); // back to the €89.00 × ₹95.00 estimate
+  });
+
+  it('REQ-CSV-08: a statement row can confirm only one expense, anywhere in the grant', async () => {
+    const { repo, trip, second } = await withTrip();
+    const a = await repo.addExpense(trip.id, expenseFields({ payee: 'A' }));
+    const b = await repo.addExpense(second.id, expenseFields({ payee: 'B' }));
+    await repo.confirmStatementPair(a.id, stmtRow('h1', '2026-11-12', 245_050));
+    await expect(repo.confirmStatementPair(b.id, stmtRow('h1', '2026-11-12', 245_050))).rejects.toThrow(/already used/);
+  });
+
+  it('REQ-CSV-08: an expense that is cash, excluded or already confirmed cannot be paired', async () => {
+    const { repo, trip } = await withTrip();
+    const cash = await repo.addExpense(trip.id, expenseFields({ paymentMode: 'cash' }));
+    await expect(repo.confirmStatementPair(cash.id, stmtRow('h1', '2026-11-12', 1))).rejects.toThrow(/no longer/);
+  });
+
+  it('REQ-CSV-05: ticked rows become confirmed bank-paid expenses with their statement line, category and reference', async () => {
+    const { db, repo, trip } = await withTrip();
+    const r = await repo.addStatementExpenses(trip.id, [{ row: stmtRow('h1', '2026-11-12', 124_550, 'UPI-GREEN GROCERS'), categoryId: 'meals' }, { row: stmtRow('h2', '2026-11-13', 5_000) }]);
+    expect(r).toEqual({ added: 2, skipped: 0 });
+    const [first] = (await db.expenses.toArray()).sort((x, y) => x.date.localeCompare(y.date));
+    expect(first).toMatchObject({
+      source: 'statement', inrStatus: 'confirmed', paymentMode: 'bank', inrMinor: 124_550, originalCurrency: 'INR', payee: 'UPI-GREEN GROCERS', categoryId: 'meals',
+      reference: 'R1', statementRef: { rowHash: 'h1', debitMinor: 124_550 },
+    });
+    expect(await repo.knownPayees()).toEqual([]); // the bank's wording is not added to the user's payee list
+  });
+
+  it('REQ-CSV-05: the same rows added again, from any trip of the grant, add nothing', async () => {
+    const { db, repo, trip, second } = await withTrip();
+    const items = [{ row: stmtRow('h1', '2026-11-12', 100) }, { row: stmtRow('h2', '2026-11-13', 200) }];
+    await repo.addStatementExpenses(trip.id, items);
+    expect(await repo.addStatementExpenses(trip.id, items)).toEqual({ added: 0, skipped: 2 });
+    expect(await repo.addStatementExpenses(second.id, [items[0]!, { row: stmtRow('h3', '2026-11-14', 300) }])).toEqual({ added: 1, skipped: 1 });
+    expect(await db.expenses.count()).toBe(3);
+  });
+
+  it('REQ-CSV-02: a bank layout is remembered by its header row, and only column positions are stored', async () => {
+    const { db, repo } = await withTrip();
+    const mapping = { date: 0, description: 1, debit: 4, credit: 5, balance: 6, dateFormat: 'dmy' as const };
+    await repo.saveBankProfile('date|narration|withdrawal amt', mapping);
+    expect(await repo.getBankProfile('date|narration|withdrawal amt')).toEqual(mapping);
+    expect(await repo.getBankProfile('another bank')).toBeUndefined();
+    expect(Object.keys((await db.bankProfiles.toArray())[0]!).sort()).toEqual(['key', 'mapping', 'updatedAt']);
+  });
+
+  it('REQ-CAP-11: a database from before bank profiles opens with its data and gains the new table', async () => {
+    const name = `v2-${++counter}`;
+    const old = new Dexie(name);
+    old.version(1).stores({ grants: 'id, updatedAt', trips: 'id, grantId', expenses: 'id, tripId, date', grantDocs: 'id, grantId', inbox: 'id, receivedAt', blobs: 'id', payeeCategories: 'payeeKey', meta: 'key' });
+    old.version(2).stores({ payees: 'key, count', anchors: 'id, field' });
+    await old.open();
+    await old.table('grants').add({ id: 'g', name: 'Kept', sponsor: '', currency: 'INR', totalMinor: 1, utilisedBeforeMinor: 0, startDate: '2026-01-01', endDate: '2026-12-31', rules: {}, createdAt: 'x', updatedAt: 'x' });
+    old.close();
+    const db = new ExpResDb(name);
+    opened.push(db);
+    await db.open();
+    expect(db.verno).toBe(3);
+    expect(await db.grants.count()).toBe(1);
+    expect(await db.bankProfiles.count()).toBe(0);
   });
 });

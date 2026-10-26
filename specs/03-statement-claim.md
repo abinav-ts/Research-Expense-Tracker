@@ -10,7 +10,7 @@ What is kept on the device: the column mapping, and for each pair or ticked row 
 
 ## Requirements
 
-### REQ-CSV-01 — Parse CSV in the browser [MUST] [agreed]
+### REQ-CSV-01 — Parse CSV in the browser [MUST] [built]
 The file is read and parsed locally with Papa Parse; it is never uploaded (REQ-PRIV-01/02).
 Acceptance:
 - Given the sample statement, When it is chosen, Then the rows appear within 1 second and no request leaves for any server (checked in the browser tests).
@@ -19,17 +19,17 @@ Acceptance:
 - Given a file that is not text (for example a picture or a PDF renamed .csv), Then a message says the file cannot be read as a statement.
 Tests: tests/unit/statement-parse.test.ts, tests/e2e/statement.smoke.test.ts
 
-### REQ-CSV-02 — Column mapping [MUST] [agreed]
+### REQ-CSV-02 — Column mapping [MUST] [built]
 The user maps the columns and the date format; ExpRes guesses first. The mapping is remembered per "bank profile" (identified by the header row), so the next statement from the same bank needs one tap.
 Acceptance:
 - Required: **date**, **description**, and either (a) a **debit** column (with an optional **credit** column), (b) one **signed amount** column (negative = money out), or (c) one **amount** column with a **Dr/Cr** column. Optional: **reference**. A **balance** column may be marked but is never read, stored or sent.
-- Date formats offered: DD/MM/YYYY, DD-MM-YYYY, DD/MM/YY, DD-MMM-YYYY, DD MMM YYYY, YYYY-MM-DD, MM/DD/YYYY. The guess looks at the whole column: a day above 12 in the first position means day-first. The user can change it, and a preview shows the first three rows as they will be read.
+- Date styles offered (four families, each with any separator and a 2- or 4-digit year): day first (12/11/2026, 12-11-26), month first (11/12/2026), year first (2026-11-12), and with the month name (12-Nov-2026, 12 Nov 2026). A time after the date is ignored. The guess looks at the whole column: a day above 12 in the first position means day-first. The user can change it, and a preview shows the first three rows as they will be read.
 - Given headers such as "Txn Date / Narration / Chq./Ref.No. / Withdrawal Amt. / Deposit Amt. / Closing Balance", Then date, description, reference, debit, credit and balance are guessed correctly (tested on three synthetic layouts).
 - Given a mapping the user confirmed once, When another file with the same header row is chosen, Then the mapping and date format are applied without asking again, with a "Change" link.
 - Mapping is incomplete (no date or no amount column) → the table is not shown and the message says what is missing.
 Tests: tests/unit/statement-map.test.ts
 
-### REQ-CSV-03 — Transaction table [MUST] [agreed]
+### REQ-CSV-03 — Transaction table [MUST] [built]
 Shows the debits with search, a date range that defaults to the trip window ± the grant's buffer, a checkbox per row and "select all shown".
 Acceptance:
 - Given the sample statement and a trip 10–14 Nov 2026 (buffer 2), Then only debits dated 8–16 Nov appear first, with a count ("12 of 40 debits"), and the date range can be widened.
@@ -40,13 +40,13 @@ Acceptance:
 - At 360 px wide each row is readable: narration on its own line, amount and checkbox below (no vertical text).
 Tests: tests/unit/statement-filter.test.ts, tests/e2e/statement.smoke.test.ts
 
-### REQ-CSV-04 — Assign category (bulk) [MUST] [agreed]
+### REQ-CSV-04 — Assign category (bulk) [MUST] [built]
 Acceptance:
 - With rows ticked, one category choice applies to all of them; each ticked row can also be changed alone. The category suggestion (REQ-CAP-14) is offered per row from its narration, and applied only when the user taps it.
 - Rows without a category can still be added; they are flagged REQ-RULE-12.
 Tests: tests/e2e/statement.smoke.test.ts
 
-### REQ-CSV-05 — Ticked rows become expenses and a ClaimDraft [MUST] [agreed]
+### REQ-CSV-05 — Ticked rows become expenses and a ClaimDraft [MUST] [built]
 Acceptance:
 - "Add N selected to this trip" creates one expense per ticked row: source "statement", payee = the narration with the bank's boilerplate left as written (editable on the expense page), date = the row's date, amount = the debit, status **confirmed**, payment mode bank, the chosen category, and the row's `StatementRef`. The balance changes at once (REQ-BAL-06).
 - A row can only be added once: adding the same file again shows those rows as "Already added" (matched by row fingerprint).
@@ -60,7 +60,7 @@ Not part of M2 (cut-line).
 ### REQ-CSV-07 — Attach receipt per row [SHOULD] [draft]
 Not part of M2 (cut-line). Until then a receipt is added from the expense page like any proof.
 
-### REQ-CSV-08 — Reconcile tracked expenses with statement rows [MUST] [agreed]
+### REQ-CSV-08 — Reconcile tracked expenses with statement rows [MUST] [built]
 The system shall match the trip's tracked expenses to statement debit rows, show proposed pairs for confirmation, and on confirmation set `statementRef`, replace `inrMinor` with the debit amount and set `inrStatus = 'confirmed'`. Unmatched tracked expenses and unmatched statement rows both stay visible.
 Matching:
 - INR expense: same amount and statement date within ±2 days of the expense date → proposed automatically.
@@ -80,7 +80,7 @@ Acceptance:
 Notes: fallback if this slips is the statement-only path (tick rows, attach proof), but then foreign expenses tracked live cannot be claimed.
 Tests: tests/unit/reconcile.test.ts, tests/e2e/statement.smoke.test.ts
 
-### REQ-CSV-09 — Tolerate real-world CSVs [MUST] [agreed]
+### REQ-CSV-09 — Tolerate real-world CSVs [MUST] [built]
 Handles preamble lines before the header, comma / semicolon / tab / pipe delimiters, quoted fields, thousands separators, footer lines, blank or malformed lines (reported, not fatal).
 Acceptance:
 - Given 8 lines of account details before the header, Then the header row is found (the first row with at least three non-empty cells that looks like column names: it names a date and an amount or debit column).
@@ -91,7 +91,10 @@ Acceptance:
 - A file with no readable rows at all says so plainly.
 Tests: tests/unit/statement-parse.test.ts
 
-### REQ-CSV-10 — Bundled synthetic sample CSV [MUST] [agreed]
+### REQ-CSV-11 — Optionally keep the statement on this device [COULD] [draft]
+Off by default and not part of M2. A choice on the Statement screen, "Keep this statement on this device", for people who would rather not choose the file each time. It would store every row of the file, including personal ones, on the device only, with a plain explanation, a list of kept statements with a delete button in Settings, and inclusion in the backup (REQ-CAP-12). Estimated at 1 to 1.5 hours on top of the core; nothing in the core has to change.
+
+### REQ-CSV-10 — Bundled synthetic sample CSV [MUST] [built]
 `fixtures/sample-statement.csv` (synthetic): a preamble block, domestic debits, one foreign-currency card debit whose INR amount differs from the demo estimate, unrelated personal rows (groceries, subscriptions, a salary credit), a footer. Downloadable in-app from the Statement screen (REQ-DEMO-04) and used by the tests.
 Acceptance:
 - It contains a debit matching each bank-paid demo expense (the IRCTC ticket, the cab, the hotel and, at ₹17,230.55 instead of the ₹17,100.00 estimate, the €180 registration), so loading the demo data and then the sample statement reconciles all four, and the balance moves as in REQ-BAL-06.

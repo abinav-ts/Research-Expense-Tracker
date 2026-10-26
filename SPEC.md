@@ -257,6 +257,7 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-CSV-07 | Attach receipt per selected row | S | 03 |
 | REQ-CSV-08 | Reconcile tracked expenses with statement rows (confirms INR) | M | 03 |
 | REQ-CSV-09 | Tolerate preamble, bad rows, delimiters | M | 03 |
+| REQ-CSV-11 | Optionally keep a statement on this device (off by default) | C | 03 |
 | REQ-CSV-10 | Bundled synthetic sample CSV | M | 03 |
 | REQ-RULE-01 | Pure, deterministic `evaluate()` shared client/server | M | 04 |
 | REQ-RULE-02 | DATE_OUT_OF_WINDOW | M | 04 |
@@ -405,6 +406,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-26 v0.5.3 — Statement screen built: REQ-CSV-01/02/03/04/05/08/09/10 (read a bank CSV on the device, guess and remember the columns per bank, table with search and the trip dates, tick rows and categorise, reconcile automatically for INR and by choice for foreign spend, by hand, unlink; sample file downloadable). Tested on five layouts (three Indian-bank styles, a signed amount, and an amount with Dr/Cr). Statement rows not ticked or paired are never saved. REQ-CSV-11 (optional keep-on-device) recorded as a possible later add-on. Date styles are four families, not seven formats. Two real defects found by the tests: a cramped description on phone widths, and a rejected proposal disappearing instead of moving to the by-hand list.
 - 2026-10-26 v0.5.2 — Rules engine built: `evaluate()` with REQ-RULE-01/02/03/04/05/06/08/09/11/12/13, `buildClaimDraft`, `evaluateTrip`; the trip, expense list and expense page now show its flags (chips with words, full text and a justification box on the expense page, "N items need fixing"); REQ-BAL-07 verified percentage and the two-section list. The statement screen (REQ-CSV-*) follows.
 - 2026-10-26 v0.5.1 — Specs 03 and 04 agreed with the owner's answers: statement rows are not saved unless ticked or paired (an optional "keep this statement" is a possible later add-on); a note about hidden credits sits in the transaction table's summary; UNVERIFIED_AMOUNT is shown as a verified percentage and by grouping instead of a red chip on every row (new REQ-BAL-07); cap and balance flags sit on the single crossing item. `Expense.justification` and extra `ClaimItem` fields added to §6.
 - 2026-10-26 v0.5.0 — M2 specs proposed (not yet agreed): `specs/03-statement-claim.md` and `specs/04-rules-engine.md` now have full acceptance criteria, listed design decisions and, for 03, the questions about the owner's bank format. SET: REQ-CSV and RULE-01/03–06/08/09/11/12/13 stay `draft` until approved.

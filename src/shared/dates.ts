@@ -11,6 +11,13 @@ export function makeDate(year: number, month: number, day: number): string | und
   return day <= daysInMonth ? `${pad(year, 4)}-${pad(month)}-${pad(day)}` : undefined;
 }
 
+/** Whole days from a to b (b - a); both are YYYY-MM-DD. Negative when b is earlier. */
+export function daysBetween(a: string, b: string): number {
+  const [ya, ma, da] = a.split('-').map(Number) as [number, number, number];
+  const [yb, mb, db] = b.split('-').map(Number) as [number, number, number];
+  return Math.round((Date.UTC(yb, mb - 1, db) - Date.UTC(ya, ma - 1, da)) / 86_400_000);
+}
+
 export function isValidDate(value: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   return !!m && makeDate(Number(m[1]), Number(m[2]), Number(m[3])) === value;

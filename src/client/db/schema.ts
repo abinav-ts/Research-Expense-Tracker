@@ -2,6 +2,7 @@
 import Dexie, { type Table } from 'dexie';
 import { payeeKey } from '../../shared/categoriser.ts';
 import type { Anchor } from '../../shared/learn.ts';
+import type { StatementMapping } from '../../shared/statement-map.ts';
 import type { CategoryId, Expense, Grant, GrantDocument, InboxItem, Trip } from '../../shared/types.ts';
 
 /**
@@ -29,6 +30,12 @@ export interface PayeeRow {
 export interface AnchorRow extends Anchor {
   updatedAt: string;
 }
+/** A bank's CSV layout, remembered so the next statement from it needs one tap (REQ-CSV-02). Column positions only: no data. */
+export interface BankProfileRow {
+  key: string;
+  mapping: StatementMapping;
+  updatedAt: string;
+}
 export interface MetaRow {
   key: string;
   value: string;
@@ -45,6 +52,7 @@ export class ExpResDb extends Dexie {
   meta!: Table<MetaRow, string>;
   payees!: Table<PayeeRow, string>;
   anchors!: Table<AnchorRow, string>;
+  bankProfiles!: Table<BankProfileRow, string>;
 
   constructor(name = 'expres') {
     super(name);
@@ -73,5 +81,7 @@ export class ExpResDb extends Dexie {
         }
         await tx.table<PayeeRow>('payees').bulkPut([...rows.values()]);
       });
+    // Version 3 (REQ-CSV-02): remembered bank statement layouts.
+    this.version(3).stores({ bankProfiles: 'key' });
   }
 }

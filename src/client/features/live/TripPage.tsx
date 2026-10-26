@@ -60,6 +60,7 @@ export function TripPage() {
       )}
       <div className="mb-6 flex flex-wrap gap-3">
         <Link to={`/trips/${trip.id}/expenses/new`} className={btnPrimary}>Add expense</Link>
+        <Link to={`/trips/${trip.id}/statement`} className={btn}>Match bank statement</Link>
         <Link to="/inbox" className={btn}>Open Inbox</Link>
         <Link to={`/trips/${trip.id}/edit`} className={btn}>Edit trip</Link>
       </div>

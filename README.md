@@ -33,6 +33,8 @@ npm run dev          # starts the app at http://localhost:5173 (stop with Ctrl+C
 
 Screenshot recognition runs on the device with Tesseract. Its files (~15 MB, of which each device downloads ~7 MB) are copied from `node_modules` into `public/ocr/` automatically before `dev` and `build`; that folder is not committed.
 
+The statement screen reads a bank's CSV on the device; `fixtures/sample-statement.csv` is a synthetic example (also downloadable from that screen).
+
 Never commit real receipts or invoices: `IMG_*.jpeg` is excluded locally in `.git/info/exclude`, and tests use the synthetic images in `fixtures/` (`npm run fixtures`).
 
 Check that the server and database work: with `npm run dev` running, open http://localhost:5173/api/health. It should show `{"ok":true,"db":{"hits":…}}`, and `hits` goes up on every reload.
