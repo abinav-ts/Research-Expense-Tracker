@@ -1,21 +1,65 @@
 # 03 — Statement Claim (Segment B): reconcile + one-shot
 
-Status: **DRAFT** (acceptance criteria to be completed in chat before M2)
+Status: **PROPOSED v0.5 — written 2026-10-26 for M2, awaiting the owner's approval and a sample of their bank's CSV**
 Covers: CSV import, reconciliation with tracked expenses, and selection producing a ClaimDraft. The claimed amount is always the statement INR debit (REQ-CLM-08). Parent: `../SPEC.md`.
+
+## How it works
+A **Statement** screen on each trip: choose the bank's CSV file → check the column mapping (guessed for you, remembered for next time) → see the debits inside the trip's dates → **reconcile**: ExpRes pairs each tracked expense with its debit; you confirm the pairs → tick any other debit that belongs to the trip → give those a category. A tracked expense that is paired becomes *confirmed* at the statement's amount; a ticked debit becomes an expense (source "statement"). Rows you do not tick are never saved anywhere.
+
+What is kept on the device: the column mapping, and for each pair or ticked row only the fields of `StatementRef` (date, narration, debit, reference, row fingerprint). The CSV file and its other rows, balances and account details are read in memory and dropped when you leave the screen.
 
 ## Requirements
 
 ### REQ-CSV-01 — Parse CSV in the browser [MUST] [draft]
-The file is read and parsed locally; it is never uploaded (REQ-PRIV-01/02).
+The file is read and parsed locally with Papa Parse; it is never uploaded (REQ-PRIV-01/02).
+Acceptance:
+- Given the sample statement, When it is chosen, Then the rows appear within 1 second and no request leaves for any server (checked in the browser tests).
+- Given a UTF-8 file with a byte-order mark, Then the first header is read correctly.
+- Given a file over 5 MB or with more than 50,000 lines, Then it is refused with a message saying so and nothing is parsed.
+- Given a file that is not text (for example a picture or a PDF renamed .csv), Then a message says the file cannot be read as a statement.
+Tests: tests/unit/statement-parse.test.ts, tests/e2e/statement.smoke.test.ts
+
 ### REQ-CSV-02 — Column mapping [MUST] [draft]
-The user maps date, description, debit/credit (or one signed amount) and reference columns, and picks the date format. The mapping can be remembered locally per "bank profile".
+The user maps the columns and the date format; ExpRes guesses first. The mapping is remembered per "bank profile" (identified by the header row), so the next statement from the same bank needs one tap.
+Acceptance:
+- Required: **date**, **description**, and either (a) a **debit** column (with an optional **credit** column), (b) one **signed amount** column (negative = money out), or (c) one **amount** column with a **Dr/Cr** column. Optional: **reference**. A **balance** column may be marked but is never read, stored or sent.
+- Date formats offered: DD/MM/YYYY, DD-MM-YYYY, DD/MM/YY, DD-MMM-YYYY, DD MMM YYYY, YYYY-MM-DD, MM/DD/YYYY. The guess looks at the whole column: a day above 12 in the first position means day-first. The user can change it, and a preview shows the first three rows as they will be read.
+- Given headers such as "Txn Date / Narration / Chq./Ref.No. / Withdrawal Amt. / Deposit Amt. / Closing Balance", Then date, description, reference, debit, credit and balance are guessed correctly (tested on three synthetic layouts).
+- Given a mapping the user confirmed once, When another file with the same header row is chosen, Then the mapping and date format are applied without asking again, with a "Change" link.
+- Mapping is incomplete (no date or no amount column) → the table is not shown and the message says what is missing.
+Tests: tests/unit/statement-map.test.ts
+
 ### REQ-CSV-03 — Transaction table [MUST] [draft]
-Shows debits with search, date-range filter defaulting to trip window ± buffer, per-row checkbox, select-all-filtered.
+Shows the debits with search, a date range that defaults to the trip window ± the grant's buffer, a checkbox per row and "select all shown".
+Acceptance:
+- Given the sample statement and a trip 10–14 Nov 2026 (buffer 2), Then only debits dated 8–16 Nov appear first, with a count ("12 of 40 debits"), and the date range can be widened.
+- Search matches narration and reference, ignoring case.
+- Credits are not shown; their count is ("3 credits hidden").
+- Each row shows date, narration, amount (₹, tabular), reference; a row already paired with an expense shows "Paired with <payee>" and cannot be ticked; a row ticked shows in a running total ("4 selected · ₹21,640.00").
+- "Select all shown" ticks only the rows currently shown (after search and date range), never hidden ones, and never paired rows.
+- At 360 px wide each row is readable: narration on its own line, amount and checkbox below (no vertical text).
+Tests: tests/unit/statement-filter.test.ts, tests/e2e/statement.smoke.test.ts
+
 ### REQ-CSV-04 — Assign category (bulk) [MUST] [draft]
-### REQ-CSV-05 — Rows become a ClaimDraft [MUST] [draft]
-Selected rows and reconciled tracked expenses form one ClaimDraft and feed the rule engine, preview, PDF and submission. Each item carries its statement line (REQ-CLM-08).
+Acceptance:
+- With rows ticked, one category choice applies to all of them; each ticked row can also be changed alone. The category suggestion (REQ-CAP-14) is offered per row from its narration, and applied only when the user taps it.
+- Rows without a category can still be added; they are flagged REQ-RULE-12.
+Tests: tests/e2e/statement.smoke.test.ts
+
+### REQ-CSV-05 — Ticked rows become expenses and a ClaimDraft [MUST] [draft]
+Acceptance:
+- "Add N selected to this trip" creates one expense per ticked row: source "statement", payee = the narration with the bank's boilerplate left as written (editable on the expense page), date = the row's date, amount = the debit, status **confirmed**, payment mode bank, the chosen category, and the row's `StatementRef`. The balance changes at once (REQ-BAL-06).
+- A row can only be added once: adding the same file again shows those rows as "Already added" (matched by row fingerprint).
+- `buildClaimDraft(grant, trip, expenses)` (REQ-RULE-01) turns the trip's non-excluded expenses into one `ClaimDraft`; each item carries its statement line (REQ-CLM-08). The claim preview, PDF and submission arrive in M3.
+- Works with no tracked expenses at all (statement-only use).
+Tests: tests/unit/claim-draft.test.ts, tests/e2e/statement.smoke.test.ts
+
 ### REQ-CSV-06 — Edit / redact description [SHOULD] [draft]
+Not part of M2 (cut-line).
+
 ### REQ-CSV-07 — Attach receipt per row [SHOULD] [draft]
+Not part of M2 (cut-line). Until then a receipt is added from the expense page like any proof.
+
 ### REQ-CSV-08 — Reconcile tracked expenses with statement rows [MUST] [draft]
 The system shall match the trip's tracked expenses to statement debit rows, show proposed pairs for confirmation, and on confirmation set `statementRef`, replace `inrMinor` with the debit amount and set `inrStatus = 'confirmed'`. Unmatched tracked expenses and unmatched statement rows both stay visible.
 Matching:
@@ -23,18 +67,43 @@ Matching:
 - Foreign-currency expense: candidates are debits within ±15% of the estimated INR amount and within ±5 days of the expense date, sorted by closeness; never auto-confirmed, the user picks the pair.
 - A statement row confirms at most one expense and vice versa; the user can unlink a pair.
 - Cash expenses (`paymentMode = 'cash'`) are skipped.
+- Pairs are decided together, not one by one: all candidate pairs are ranked (smallest date gap first, then closest amount, then oldest expense) and taken greedily, so two identical expenses and one matching row give exactly one pair, deterministically.
 Acceptance:
 - Given an INR expense ₹1,200.00 on 2026-11-11 and statement debits of ₹1,200.00 on 2026-11-12 and on 2026-11-20, Then only the 11-12 row is proposed.
 - Given a €89.00 expense estimated at ₹8,455.00 and a debit of ₹8,612.34 inside the window, Then it is offered as a candidate; after the user confirms, the expense shows ₹8,612.34, status confirmed, and the balance changes per REQ-BAL-06.
 - Given two expenses with the same amount and date and one matching row, Then only one pair can be confirmed.
+- **Manual link:** for an expense with no proposal (an INR expense whose amount differs, a foreign one outside the band) the user can pick any unpaired debit by hand; the statement amount is then used and the screen says so.
+- **Unlink** returns the expense to *pending* at its own amount again (the estimate for a foreign expense, the typed amount for an INR one), clears `statementRef`, and frees the row.
+- Pairs are shown side by side (expense: payee, date, amount; debit: narration, date, amount) with the reason ("same amount, 1 day apart" / "₹157.34 more than your estimate"). "Confirm all" confirms every automatic (INR) proposal; foreign ones are confirmed one by one.
+- An expense that is already confirmed is never re-proposed. Expenses of other trips are not touched.
+- After confirming, the "unpaired" lists remain: tracked expenses with no debit, and debits with no expense.
 Notes: fallback if this slips is the statement-only path (tick rows, attach proof), but then foreign expenses tracked live cannot be claimed.
-Tests: tests/unit/reconcile.test.ts
-### REQ-CSV-09 — Tolerate real-world CSVs [MUST] [draft]
-Handles preamble lines before the header, comma or semicolon delimiters, quoted fields, thousands separators, blank/malformed lines (reported, not fatal).
-### REQ-CSV-10 — Bundled synthetic sample CSV [MUST] [draft]
-`fixtures/sample-statement.csv` (synthetic: preamble block, domestic debits, one foreign-currency card debit whose INR amount differs from the demo estimate, unrelated personal rows), downloadable in-app (REQ-DEMO-04).
+Tests: tests/unit/reconcile.test.ts, tests/e2e/statement.smoke.test.ts
 
-## Open questions
-- Which banks' CSV layouts must work? (Default: generic mapper, tested on 2–3 synthetic layouts.)
-- Are credits/refunds ever claimed as negatives? (Default: not in v1.)
-- Do statement narrations for foreign card spends show the original-currency amount? (Default: do not rely on it.)
+### REQ-CSV-09 — Tolerate real-world CSVs [MUST] [draft]
+Handles preamble lines before the header, comma / semicolon / tab / pipe delimiters, quoted fields, thousands separators, footer lines, blank or malformed lines (reported, not fatal).
+Acceptance:
+- Given 8 lines of account details before the header, Then the header row is found (the first row with at least three non-empty cells that looks like column names: it names a date and an amount or debit column).
+- Given a semicolon-separated file, Then it is read like a comma one (delimiter guessed from the header row).
+- Given amounts written `1,23,456.78`, `1,234.56`, `₹ 560.00`, `560.00 Dr`, `(560.00)` or `-560.00`, Then each reads as the right number of paise (integer arithmetic only, REQ-NFR-04).
+- Given a quoted field containing a comma or a line break, Then it stays one field.
+- Given rows that cannot be read (no valid date, no amount) and footer lines ("Closing balance", totals), Then they are skipped and listed: "3 lines could not be read" with their line numbers and a reason. The rest still loads.
+- A file with no readable rows at all says so plainly.
+Tests: tests/unit/statement-parse.test.ts
+
+### REQ-CSV-10 — Bundled synthetic sample CSV [MUST] [draft]
+`fixtures/sample-statement.csv` (synthetic): a preamble block, domestic debits, one foreign-currency card debit whose INR amount differs from the demo estimate, unrelated personal rows (groceries, subscriptions, a salary credit), a footer. Downloadable in-app from the Statement screen (REQ-DEMO-04) and used by the tests.
+Acceptance:
+- It contains a debit matching each bank-paid demo expense (the IRCTC ticket, the cab, the hotel and, at ₹17,230.55 instead of the ₹17,100.00 estimate, the €180 registration), so loading the demo data and then the sample statement reconciles all four, and the balance moves as in REQ-BAL-06.
+- It contains no real names, account numbers or merchants.
+Tests: tests/unit/statement-parse.test.ts, tests/e2e/statement.smoke.test.ts
+
+## Decisions this proposal makes (change any of them)
+1. **Rows you do not tick are never saved.** The statement is not stored; each visit starts from the file. (Alternative: keep the whole statement on the device. More convenient, but it keeps the personal rows you wanted kept out.)
+2. **Ticked rows become expenses of the trip** (source "statement") so lists, balance and rules all work the same for every expense.
+3. **Credits and refunds are not claimable in this version.**
+4. **Foreign card spends are matched by amount band and date, never by the narration**, because narrations rarely show the original amount.
+5. **One statement screen per trip**, opened from the trip page.
+
+## What I need from you (to test on a real layout, not only invented ones)
+Your bank's name and one real CSV **header row plus the lines above it**, and two or three example rows, with every name, account number, amount and merchant replaced. Which date format does it use (for example `12/11/2026` or `12-Nov-2026`)? Is the money split into Debit / Credit columns, or one signed column? Please do not send a real statement.
