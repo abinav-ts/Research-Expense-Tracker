@@ -16,7 +16,8 @@ Acceptance:
 - Given the sample statement, When it is chosen, Then the rows appear within 1 second and no request leaves for any server (checked in the browser tests).
 - Given a UTF-8 file with a byte-order mark, Then the first header is read correctly.
 - Given a file over 5 MB or with more than 50,000 lines, Then it is refused with a message saying so and nothing is parsed.
-- Given a file that is not text (for example a picture or a PDF renamed .csv), Then a message says the file cannot be read as a statement.
+- Given a file that is not text, Then a message says what it is and what to do instead, decided from its first bytes (a PDF, an Excel .xlsx or .xls file, a picture) or its name, however it was renamed; an empty file says it is empty.
+- Text is read as UTF-8 (with or without a byte-order mark), UTF-16 (Excel's "Unicode Text", marked or not) or old Windows-1252, whichever fits.
 Tests: tests/unit/statement-parse.test.ts, tests/e2e/statement.smoke.test.ts
 
 ### REQ-CSV-02 — Column mapping [MUST] [built]
@@ -27,6 +28,9 @@ Acceptance:
 - Given headers such as "Txn Date / Narration / Chq./Ref.No. / Withdrawal Amt. / Deposit Amt. / Closing Balance", Then date, description, reference, debit, credit and balance are guessed correctly (tested on three synthetic layouts).
 - Given a mapping the user confirmed once, When another file with the same header row is chosen, Then the mapping and date format are applied without asking again, with a "Change" link.
 - Mapping is incomplete (no date or no amount column) → the table is not shown and the message says what is missing.
+- Columns are recognised by many spellings (Withdrawals, Paid out, Debit Amount (INR), Dr Amount, Narrative, Particulars, Instrument No, UTR No ...); the transaction date wins over the value date wherever each sits. A type column with words (WITHDRAWAL, DEPOSIT, PAYMENT, REFUND) gives the direction of a single amount column.
+- When the headers cannot be understood, or the file has no header row at all, the columns are worked out from what is in them (the column of dates; numeric columns with pence; the wordiest column is the description; a long run of digits is a reference, not an amount). The user always confirms them, so a wrong guess costs one tap and never wrong data.
+- A fifth date style, month name first (Nov 12, 2026), is offered.
 Tests: tests/unit/statement-map.test.ts
 
 ### REQ-CSV-03 — Transaction table [MUST] [built]
@@ -85,7 +89,8 @@ Handles preamble lines before the header, comma / semicolon / tab / pipe delimit
 Acceptance:
 - Given 8 lines of account details before the header, Then the header row is found (the first row with at least three non-empty cells that looks like column names: it names a date and an amount or debit column).
 - Given a semicolon-separated file, Then it is read like a comma one (delimiter guessed from the header row).
-- Given amounts written `1,23,456.78`, `1,234.56`, `₹ 560.00`, `560.00 Dr`, `(560.00)` or `-560.00`, Then each reads as the right number of paise (integer arithmetic only, REQ-NFR-04).
+- Given amounts written `1,23,456.78`, `1,234.56`, `₹ 560.00`, `Rs.560`, `560.00 INR`, `Dr 560.00`, `560.00cr`, `(560.00)`, `-560.00`, `−560.00` or `560.00-`, with ordinary, non-breaking or thin spaces, Then each reads as the right number of paise (integer arithmetic only, REQ-NFR-04). A file written with a decimal comma (`1.234,56`, `1 234,56`) is detected and read the same way; an ambiguous `5 600.00` is refused, never guessed.
+- Dates may carry a leading weekday, a time, an ISO `T` time or quotes; all are ignored.
 - Given a quoted field containing a comma or a line break, Then it stays one field.
 - Given rows that cannot be read (no valid date, no amount) and footer lines ("Closing balance", totals), Then they are skipped and listed: "3 lines could not be read" with their line numbers and a reason. The rest still loads.
 - A file with no readable rows at all says so plainly.

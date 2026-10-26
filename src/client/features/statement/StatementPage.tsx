@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { allowedWindow } from '../../../shared/rules/date-window.ts';
 import { applyMapping, guessMapping, profileKey, type DateFormat, type StatementMapping } from '../../../shared/statement-map.ts';
 import { parseStatementText, type RawStatement } from '../../../shared/statement-parse.ts';
+import { decodeStatement } from '../../lib/decode.ts';
 import { btn, btnPrimary, card, h1, h2, mutedText } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
@@ -31,6 +32,8 @@ export function StatementPage() {
   const [draft, setDraft] = useState<Draft>();
   const [confirmed, setConfirmed] = useState<StatementMapping>();
   const [showProblems, setShowProblems] = useState(false);
+  // Hooks stay above every early return below: React needs the same hooks on every render.
+  const applied = useMemo(() => (file && confirmed ? applyMapping(file.statement.rows, confirmed) : undefined), [file, confirmed]);
 
   if (!data) return <p role="status">Loading…</p>;
   if (!data.detail) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
@@ -41,7 +44,8 @@ export function StatementPage() {
     setError(undefined);
     setConfirmed(undefined);
     setShowProblems(false);
-    const parsed = parseStatementText(await chosen.text());
+    const decoded = decodeStatement(await chosen.arrayBuffer(), chosen.name);
+    const parsed = decoded.ok ? parseStatementText(decoded.text) : decoded;
     if (!parsed.ok) {
       setFile(undefined);
       setDraft(undefined);
@@ -58,7 +62,6 @@ export function StatementPage() {
     }
   }
 
-  const applied = file && confirmed ? applyMapping(file.statement.rows, confirmed) : undefined;
   const taken = new Set(grantExpenses.flatMap((e) => (e.statementRef ? [e.statementRef.rowHash] : [])));
   const owners = new Map(grantExpenses.flatMap((e) => (e.statementRef ? [[e.statementRef.rowHash, e.source === 'statement' ? 'Already added to your trip' : `Paired with ${e.payee}`] as const] : [])));
   const dates = allowedWindow(trip, grant.rules.travelBufferDays);
@@ -91,7 +94,7 @@ export function StatementPage() {
         {error && <p role="alert" className="mt-3 font-semibold text-state-over" data-testid="statement-error">⚠ {error}</p>}
         {file && !error && (
           <p className="mt-3 text-sm" role="status" data-testid="file-summary">
-            Read <strong>{file.name}</strong>: {file.statement.rows.length} lines under the column names.
+            Read <strong>{file.name}</strong>: {file.statement.rows.length} lines{file.statement.headerless ? ' (this file has no column names, so please check the columns below)' : ' under the column names'}.
             {applied && ` ${applied.debits.length} debits, ${applied.creditCount} ${applied.creditCount === 1 ? 'credit' : 'credits'}.`}
             {applied && applied.problems.length > 0 && (
               <> <button type="button" className="font-semibold text-breeze-deep underline" onClick={() => setShowProblems(!showProblems)} data-testid="problems-toggle">{applied.problems.length} {applied.problems.length === 1 ? 'line' : 'lines'} could not be read</button></>

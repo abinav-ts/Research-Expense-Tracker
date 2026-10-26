@@ -37,10 +37,47 @@ test.describe('REQ-CSV-01: reading a statement on the device', () => {
     await loadDemoAndOpenTrip(page);
     await page.getByRole('link', { name: 'Match bank statement' }).click();
     await page.getByLabel('Choose statement file').setInputFiles({ name: 'photo.csv', mimeType: 'text/csv', buffer: Buffer.from('%PDF-1.4\u0000\u0001\u0002 binary \u0000') });
-    await expect(page.getByTestId('statement-error')).toContainText('cannot be read as a statement');
+    await expect(page.getByTestId('statement-error')).toContainText('This is a PDF, not a CSV'); // recognised by its first bytes, whatever the name says
     await expect(page.getByTestId('transaction-table')).toHaveCount(0);
     await page.getByLabel('Choose statement file').setInputFiles({ name: 'notes.csv', mimeType: 'text/csv', buffer: Buffer.from('hello\nthere,friend,again\n') });
-    await expect(page.getByTestId('statement-error')).toContainText('Could not find the row that names the columns');
+    await expect(page.getByTestId('statement-error')).toContainText('Could not find the rows of transactions');
+  });
+
+  test('REQ-CSV-01: an Excel file, a picture and an empty file each get their own plain message', async ({ page }) => {
+    await loadDemoAndOpenTrip(page);
+    await page.getByRole('link', { name: 'Match bank statement' }).click();
+    const choose = (name: string, buffer: Buffer) => page.getByLabel('Choose statement file').setInputFiles({ name, mimeType: 'application/octet-stream', buffer });
+    await choose('statement.xlsx', Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0]));
+    await expect(page.getByTestId('statement-error')).toContainText('Excel (.xlsx) file, not a CSV');
+    await choose('scan.csv', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0]));
+    await expect(page.getByTestId('statement-error')).toContainText('This is a picture');
+    await choose('empty.csv', Buffer.alloc(0));
+    await expect(page.getByTestId('statement-error')).toContainText('This file is empty');
+  });
+
+  test('REQ-CSV-01, REQ-CSV-09: a UTF-16 file saved by Excel ("Unicode Text", tab separated) is read like any other', async ({ page }) => {
+    await loadDemoAndOpenTrip(page);
+    await page.getByRole('link', { name: 'Match bank statement' }).click();
+    const rows = ['Date\tNarration\tChq./Ref.No.\tWithdrawal Amt.\tDeposit Amt.\tClosing Balance', '09/11/26\tUPI-IRCTC RAIL TICKET\tR1\t1,850.00\t\t10,000.00'].join('\r\n');
+    const utf16 = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(rows, 'utf16le')]);
+    await page.getByLabel('Choose statement file').setInputFiles({ name: 'excel-unicode.txt', mimeType: 'text/plain', buffer: utf16 });
+    await page.getByRole('button', { name: 'Use these columns' }).click();
+    await expect(page.getByTestId('file-summary')).toContainText('1 debits, 0 credits');
+    await expect(proposals(page)).toHaveCount(1); // the IRCTC ticket of ₹1,850.00 on 9 Nov
+  });
+
+  test('REQ-CSV-09: a file with no column names at all is read and the user is asked to check the guessed columns', async ({ page }) => {
+    await loadDemoAndOpenTrip(page);
+    await page.getByRole('link', { name: 'Match bank statement' }).click();
+    const rows = ['09/11/2026,UPI-IRCTC RAIL TICKET,0000000106,"1,850.00",,"98,150.00"', '14/11/2026,SALARY,0000000107,,"50,000.00","1,48,150.00"'].join('\n');
+    await page.getByLabel('Choose statement file').setInputFiles({ name: 'no-header.csv', mimeType: 'text/csv', buffer: Buffer.from(rows) });
+    await expect(page.getByTestId('file-summary')).toContainText('this file has no column names');
+    await expect(page.getByTestId('mapping-panel')).toBeVisible();
+    await expect(page.getByLabel('Date', { exact: true })).toHaveValue('0');
+    await expect(page.getByLabel('Description (narration)')).toHaveValue('1');
+    await expect(page.getByLabel('Money out (debit / withdrawal)')).toHaveValue('3');
+    await page.getByRole('button', { name: 'Use these columns' }).click();
+    await expect(proposals(page)).toHaveCount(1);
   });
 
   test('REQ-CSV-01: a file over 5 MB is refused with a message', async ({ page }) => {

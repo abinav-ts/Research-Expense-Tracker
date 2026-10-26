@@ -1,6 +1,7 @@
 // REQ-CSV-01, REQ-CSV-09: read a bank's CSV text into rows, whatever its layout: lines before the header, comma /
 // semicolon / tab / pipe, quoted fields, blank lines. Pure (Papa Parse works on a string without any browser API).
 import Papa from 'papaparse';
+import { looksLikeDate } from './statement-map.ts';
 
 export const MAX_STATEMENT_BYTES = 5_000_000;
 export const MAX_STATEMENT_LINES = 50_000;
@@ -16,13 +17,15 @@ export interface RawStatement {
   /** Everything above the header row: account details, period and so on. Never used or stored. */
   preambleLines: number;
   rows: RawRow[];
+  /** True when the file has no row of column names: the columns are called Column 1, Column 2 ... and guessed from their contents. */
+  headerless?: boolean;
 }
 export type ParseOutcome = { ok: true; statement: RawStatement } | { ok: false; error: string };
 
 const DELIMITERS = [',', ';', '\t', '|'];
-const DATE_WORD = /\b(date|dt)\b/i;
-const AMOUNT_WORD = /\b(debit|withdraw\w*|dr|amount|credit|deposit\w*|cr|paid out|money out)\b/i;
-const HEADER_WORD = /\b(date|dt|narration|description|particulars|remarks|details|debit|withdraw\w*|credit|deposit\w*|balance|amount|ref\w*|chq|cheque|utr)\b/i;
+const DATE_WORD = /\b(date|dt|dated)\b/i;
+const AMOUNT_WORD = /\b(debit\w*|withdraw\w*|dr|amount|amt|credit\w*|deposit\w*|cr|paid out|paid in|money out|money in|value)\b/i;
+const HEADER_WORD = /\b(date|dt|narration|description|particulars|remarks|details|narrative|memo|payee|debit\w*|withdraw\w*|credit\w*|deposit\w*|balance|bal|amount|amt|ref\w*|chq|cheque|utr|type|txn|transaction)\b/i;
 
 /** The delimiter that gives the most rows of one consistent, wide shape (account details above the table do not decide it). */
 function guessDelimiter(sample: string): string {
@@ -81,12 +84,25 @@ export function parseStatementText(input: string): ParseOutcome {
     },
   });
   const rows = all.filter((r) => r.cells.some(Boolean));
-  const headerIndex = rows.findIndex((r) => looksLikeHeader(r.cells));
+  // 1. A row that names a date and an amount column. 2. Failing that, the text row just above the first row that holds a date.
+  // 3. Failing that, a file with no header at all: the first row that holds a date starts the data.
+  const hasDate = (r: RawRow) => r.cells.some((c) => c && looksLikeDate(c));
+  const wide = (r: RawRow) => r.cells.filter(Boolean).length >= 3;
+  let headerIndex = rows.findIndex((r) => looksLikeHeader(r.cells));
   if (headerIndex === -1) {
-    return { ok: false, error: 'Could not find the row that names the columns (one with a date and an amount or debit column). Is this your bank\'s statement?' };
+    const firstData = rows.findIndex((r) => wide(r) && hasDate(r));
+    if (firstData > 0 && wide(rows[firstData - 1]!) && !hasDate(rows[firstData - 1]!)) headerIndex = firstData - 1;
+    else if (firstData >= 0) {
+      const body = rows.slice(firstData);
+      const width = Math.max(...body.map((r) => r.cells.length));
+      return { ok: true, statement: { delimiter, headers: Array.from({ length: width }, (_, i) => `Column ${i + 1}`), preambleLines: rows[firstData]!.line - 1, rows: body, headerless: true } };
+    }
+  }
+  if (headerIndex === -1) {
+    return { ok: false, error: 'Could not find the rows of transactions: no row has a date and an amount. Is this your bank\'s statement?' };
   }
   const header = rows[headerIndex]!;
   const body = rows.slice(headerIndex + 1).filter((r) => r.cells.some(Boolean));
   if (body.length === 0) return { ok: false, error: 'The statement has column names but no rows under them.' };
-  return { ok: true, statement: { delimiter, headers: header.cells, preambleLines: header.line - 1, rows: body } };
+  return { ok: true, statement: { delimiter, headers: header.cells.map((c) => c.replace(/\s+/g, ' ').trim().replace(/^"+|"+$/g, '').trim()), preambleLines: header.line - 1, rows: body } };
 }
