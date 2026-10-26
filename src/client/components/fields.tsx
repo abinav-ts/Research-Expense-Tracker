@@ -55,7 +55,7 @@ interface SelectFieldProps extends BaseProps {
 export function SelectField({ id, label, error, hint, value, onChange, options }: SelectFieldProps) {
   return (
     <Wrap id={id} label={label} error={error} hint={hint}>
-      <select id={id} name={id} value={value} onChange={(e) => onChange(e.target.value)} className={control} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, error, hint)}>
+      <select id={id} name={id} value={value} onChange={(e) => onChange(e.target.value)} className={`${control} ex-select`} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, error, hint)}>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </Wrap>

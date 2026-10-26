@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react';
 import { Link } from 'react-router';
-import { getOfflineReady, subscribeOfflineReady } from '../../app/pwa.ts';
+import { getOfflineReady, subscribePwa } from '../../app/pwa.ts';
 
 const card =
   'flex min-h-11 flex-col gap-1 rounded-xl border border-line bg-surface p-5 transition-colors hover:border-breeze-deep';
 
 export function HomePage() {
-  const offlineReady = useSyncExternalStore(subscribeOfflineReady, getOfflineReady);
+  const offlineReady = useSyncExternalStore(subscribePwa, getOfflineReady);
 
   return (
     <div>

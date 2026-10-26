@@ -40,6 +40,18 @@
   }
 }
 
+/* Dropdowns. Safari draws native selects at its own height and ignores min-height, which left them far below the 44 px
+   touch target (REQ-NFR-01). Taking over the drawing makes them honour it; the chevron is two gradients in the ink token. */
+.ex-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.5rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ex-ink) 50%), linear-gradient(135deg, var(--ex-ink) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
 /* Amounts: Inter with tabular figures (REQ-BRAND-02). */
 .amount {
   font-family: var(--ex-font-ui);

@@ -1,3 +1,5 @@
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { expect, test } from '@playwright/test';
 import { brandTokens } from '../../build/brand.ts';
 
@@ -42,5 +44,58 @@ test.describe('M0 PWA shell', () => {
     const outcome = await page.evaluate(() => fetch('/api/health').then((r) => `status ${r.status}`, () => 'network error'));
     expect(outcome).toBe('network error');
     await context.setOffline(false);
+  });
+
+  test('REQ-OFF-06: when a new version is ready a bar says so; the old one keeps running until Reload is tapped, then the new one takes over', async ({ page }) => {
+    // A real "new version ships": a small proxy in front of the app (its own origin) serves a changed service worker on demand.
+    let newer = '';
+    const proxy = http.createServer((req, res) => {
+      // Without validators the server always sends the full file: otherwise it would answer 304 "unchanged" for sw.js.
+      const headers = { ...req.headers, host: 'localhost:4173', 'accept-encoding': 'identity' };
+      delete headers['if-none-match'];
+      delete headers['if-modified-since'];
+      const upstream = http.request({ host: 'localhost', port: 4173, path: req.url, method: req.method, headers }, (up) => {
+        if (req.url?.split('?')[0] !== '/sw.js') {
+          res.writeHead(up.statusCode ?? 502, up.headers);
+          up.pipe(res);
+          return;
+        }
+        const chunks: Buffer[] = [];
+        up.on('data', (c: Buffer) => chunks.push(c));
+        up.on('end', () => {
+          const headers = { ...up.headers };
+          delete headers['content-length'];
+          res.writeHead(up.statusCode ?? 502, headers);
+          res.end(Buffer.concat(chunks).toString() + newer);
+        });
+      });
+      req.pipe(upstream);
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, 'localhost', resolve));
+    try {
+      const origin = `http://localhost:${(proxy.address() as AddressInfo).port}`;
+      await page.goto(origin + '/');
+      await page.evaluate(() => navigator.serviceWorker.ready);
+      await page.reload(); // controlled by the first version
+      await expect(page.getByText('Ready for offline use')).toBeVisible();
+      await expect(page.getByTestId('update-bar')).toHaveCount(0); // nothing to announce yet
+
+      newer = '\n// a newer version';
+      await page.evaluate(async () => void (await (await navigator.serviceWorker.getRegistration())!.update()));
+
+      await expect(page.getByTestId('update-bar')).toContainText('New version available', { timeout: 20_000 });
+      const states = await page.evaluate(async () => {
+        const r = (await navigator.serviceWorker.getRegistration())!;
+        return { waiting: !!r.waiting, active: !!r.active };
+      });
+      expect(states).toEqual({ waiting: true, active: true }); // downloaded, but NOT running until the user says so
+
+      await page.getByRole('button', { name: 'Reload' }).click();
+      await expect(page.getByTestId('update-bar')).toHaveCount(0, { timeout: 20_000 });
+      await page.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration())!.waiting);
+      await expect(page.getByTestId('brand-logo')).toHaveCount(1);
+    } finally {
+      await new Promise((resolve) => proxy.close(resolve));
+    }
   });
 });

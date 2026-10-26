@@ -14,6 +14,29 @@ const pasteText = async (page: Page, text: string) => {
   await page.getByRole('button', { name: 'Add to Inbox' }).click();
 };
 
+test.describe('REQ-CAP-04: the Inbox list on a phone', () => {
+  test('REQ-CAP-04: an SMS and two image rows keep a readable text column at 360 px: no letters stacked vertically, no sideways scrolling', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto('/inbox');
+    await page.getByLabel('Choose proof files').setInputFiles([pngFile('a-rather-long-photo-file-name-from-an-iphone-IMG_20261025_125900.png'), pngFile('b.png')]);
+    await pasteText(page, 'Rs 2399 spent@ ABDUSROLLS on 25OCT26 12:59 Ref 34567 thank you for banking with us, have a great day, see you soon');
+    await expect(page.getByTestId('inbox-item')).toHaveCount(3);
+
+    for (const row of await page.getByTestId('inbox-item').all()) {
+      const text = await row.getByTestId('inbox-item-text').boundingBox();
+      expect(text!.width).toBeGreaterThan(150); // the failure was 0 px wide and 1,800 px tall
+      expect(text!.height).toBeLessThan(140);
+      for (const control of [row.getByLabel('Proof type'), row.getByRole('link', { name: 'Review' })]) {
+        const box = await control.boundingBox();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+        expect(box!.height).toBeGreaterThanOrEqual(44);
+      }
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+  });
+});
+
 test.describe('REQ-CAP-02: import files', () => {
   test('REQ-CAP-02: three images at once become three Inbox items and the nav badge shows 3', async ({ page }) => {
     await page.goto('/inbox');

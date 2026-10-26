@@ -5,7 +5,7 @@ import { scrubReceiptText } from '../../../shared/receipt-parser.ts';
 import { PROOF_TYPE_LABELS, type ProofType } from '../../../shared/types.ts';
 import { SelectField, TextAreaField } from '../../components/fields.tsx';
 import { Messages } from '../../components/Messages.tsx';
-import { btn, btnPrimary, card, h1, linkClass } from '../../components/ui.ts';
+import { btn, btnPrimary, card, h1 } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
@@ -81,21 +81,26 @@ export function InboxPage() {
       ) : (
         <ul className="grid gap-3" data-testid="inbox-list">
           {items.map((item) => (
-            <li key={item.id} className={`${card} flex flex-wrap items-center gap-3`} data-testid="inbox-item">
-              {item.kind === 'file' ? <ProofThumb file={item} /> : <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-line bg-ground text-xs font-semibold text-ink-soft">SMS</span>}
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold break-words">{item.kind === 'file' ? item.name : (item.text ?? '').slice(0, 90)}</p>
-                <p className="text-sm text-ink-soft">{formatReceivedAt(item.receivedAt)}</p>
-                {item.tooLarge && <p className="text-sm font-semibold text-state-low">⚠ {TOO_LARGE_NOTE}</p>}
+            <li key={item.id} className={`${card} grid gap-3`} data-testid="inbox-item">
+              {/* Row 1: thumbnail and what it is. Row 2: the controls. On a phone they never share a line, so the text keeps its width. */}
+              <div className="flex items-start gap-3">
+                {item.kind === 'file' ? <ProofThumb file={item} /> : <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-line bg-ground text-xs font-semibold text-ink-soft">SMS</span>}
+                <div className="min-w-0 flex-1" data-testid="inbox-item-text">
+                  <p className="line-clamp-3 font-semibold [overflow-wrap:anywhere]">{item.kind === 'file' ? item.name : item.text}</p>
+                  <p className="text-sm text-ink-soft">{formatReceivedAt(item.receivedAt)}</p>
+                  {item.tooLarge && <p className="text-sm font-semibold text-state-low">⚠ {TOO_LARGE_NOTE}</p>}
+                </div>
               </div>
-              <div className="w-44">
-                <SelectField
-                  id={`type-${item.id}`} label="Proof type" value={item.proofType ?? 'other'}
-                  onChange={(v) => void attempt(() => repo.setInboxProofType(item.id, v as ProofType))}
-                  options={(Object.keys(PROOF_TYPE_LABELS) as ProofType[]).map((t) => ({ value: t, label: PROOF_TYPE_LABELS[t] }))}
-                />
+              <div className="flex flex-wrap items-end gap-x-3">
+                <div className="min-w-44 flex-1">
+                  <SelectField
+                    id={`type-${item.id}`} label="Proof type" value={item.proofType ?? 'other'}
+                    onChange={(v) => void attempt(() => repo.setInboxProofType(item.id, v as ProofType))}
+                    options={(Object.keys(PROOF_TYPE_LABELS) as ProofType[]).map((t) => ({ value: t, label: PROOF_TYPE_LABELS[t] }))}
+                  />
+                </div>
+                <Link to={`/inbox/${item.id}`} className={`${btnPrimary} mb-4`}>Review</Link>
               </div>
-              <Link to={`/inbox/${item.id}`} className={linkClass}>Review</Link>
             </li>
           ))}
         </ul>

@@ -52,9 +52,9 @@ Acceptance:
 - If the data is not yet cached and the device is offline, OCR is disabled with a clear message and paste-text parsing (REQ-CAP-13) still works.
 Tests: tests/e2e/ocr.smoke.test.ts
 
-### REQ-OFF-06 — Update prompt [SHOULD] [agreed]
+### REQ-OFF-06 — Update prompt [SHOULD] [built]
 Acceptance:
-- When a new service worker is waiting, a bar says "New version available — Reload"; Reload activates it.
+- When a new service worker is waiting, a bar says "New version available" with a Reload button; Reload activates it. Until then the running version is left alone (the new one waits), so the app never swaps itself under a half-filled form. The app looks for a new version every 30 minutes and whenever the tab becomes visible again, not only on reload.
 - The app never reloads automatically while a form has unsaved changes.
 Tests: tests/e2e/pwa.smoke.test.ts
 

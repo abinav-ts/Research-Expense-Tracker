@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Logo } from '../brand/Logo.tsx';
 import { db } from '../db/index.ts';
 import { clearError, useErrorMessage } from '../lib/errors.ts';
 import { useLive } from '../lib/useLive.ts';
 import { ensureOcrAssets } from '../ocr/assets.ts';
+import { getUpdateReady, reloadForUpdate, subscribePwa } from './pwa.ts';
 
 interface AppShellProps {
   /** 'reviewer' pages show the logo without a home link (REQ-BRAND-01). */
@@ -38,6 +39,20 @@ function ResearcherNav() {
   );
 }
 
+/** REQ-OFF-06: a new version has been downloaded and is waiting. It is only applied when the user taps Reload. */
+function UpdateBar() {
+  const ready = useSyncExternalStore(subscribePwa, getUpdateReady);
+  if (!ready) return null;
+  return (
+    <div role="status" className="border-b-2 border-breeze-deep bg-surface" data-testid="update-bar">
+      <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-3 px-4 py-3">
+        <p className="flex-1 font-semibold">New version available</p>
+        <button type="button" onClick={() => void reloadForUpdate()} className="inline-flex min-h-11 items-center rounded-lg bg-ink px-4 font-semibold text-on-dark">Reload</button>
+      </div>
+    </div>
+  );
+}
+
 function ErrorBanner() {
   const message = useErrorMessage();
   if (!message) return null;
@@ -61,6 +76,7 @@ export function AppShell({ variant, children }: AppShellProps) {
           {variant === 'researcher' && <ResearcherNav />}
         </div>
       </header>
+      <UpdateBar />
       <ErrorBanner />
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">{children}</main>
     </div>

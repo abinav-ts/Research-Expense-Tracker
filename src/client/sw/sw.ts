@@ -23,6 +23,9 @@ registerRoute(({ url }) => url.pathname === '/share-target', ({ request }) => ha
 // Recognition data (REQ-OFF-05): downloaded into this cache by the page in the background; served from it offline.
 registerRoute(({ url }) => url.pathname.startsWith('/ocr/'), new CacheFirst({ cacheName: 'expres-ocr-v1' }));
 
-// M0: take over immediately. The "New version available" prompt is REQ-OFF-06 (later).
-self.skipWaiting();
+// REQ-OFF-06: a new version waits until the user taps "Reload" in the update bar (it then sends SKIP_WAITING), so the app
+// never swaps itself under a half-filled form. The very first install has nothing to wait for and starts at once.
+self.addEventListener('message', (event) => {
+  if ((event.data as { type?: string } | undefined)?.type === 'SKIP_WAITING') void self.skipWaiting();
+});
 clientsClaim();
