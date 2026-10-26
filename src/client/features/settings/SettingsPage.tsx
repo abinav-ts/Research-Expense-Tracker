@@ -1,3 +1,4 @@
+import { InstallSection } from './InstallSection.tsx';
 import { useState } from 'react';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
 import { btn, btnDanger, card, h1, h2, mutedText } from '../../components/ui.ts';
@@ -55,6 +56,8 @@ export function SettingsPage() {
           />
         )}
       </section>
+
+      <InstallSection />
 
       <section className={`${card} mb-6`} aria-labelledby="app-heading">
         <h2 id="app-heading" className={`${h2} mb-2`}>This app</h2>

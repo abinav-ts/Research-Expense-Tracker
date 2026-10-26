@@ -6,6 +6,7 @@ import { db } from '../db/index.ts';
 import { clearError, useErrorMessage } from '../lib/errors.ts';
 import { useLive } from '../lib/useLive.ts';
 import { ensureOcrAssets } from '../ocr/assets.ts';
+import { ConnectionStatus } from './ConnectionStatus.tsx';
 import { getUpdateReady, reloadForUpdate, subscribePwa } from './pwa.ts';
 
 interface AppShellProps {
@@ -74,6 +75,9 @@ export function AppShell({ variant, children }: AppShellProps) {
         <div className="mx-auto flex h-16 w-full max-w-4xl items-center px-4">
           <Logo asLink={variant === 'researcher'} />
           {variant === 'researcher' && <ResearcherNav />}
+        </div>
+        <div className="mx-auto flex w-full max-w-4xl justify-end px-4 pb-1">
+          <ConnectionStatus />
         </div>
       </header>
       <UpdateBar />
