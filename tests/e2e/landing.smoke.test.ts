@@ -18,7 +18,7 @@ test.describe('M0 landing page', () => {
     await page.goBack();
     await page.getByRole('link', { name: /Reviewer \(sample claim\)/ }).click();
     await expect(page).toHaveURL('/review/sample');
-    await expect(page.getByRole('heading', { name: 'Sample claim' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Review claim' })).toBeVisible();
   });
 
   test('M0 landing: the touch targets are at least 44 px tall', async ({ page }) => {

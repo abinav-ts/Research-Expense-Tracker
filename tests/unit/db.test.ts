@@ -321,6 +321,19 @@ describe('REQ-CAP-16: learning from confirmed expenses', () => {
 });
 
 describe('REQ-CAP-11: opening older data with a newer app version', () => {
+  it('REQ-CLM-04, REQ-CAP-11: submissions and the claimant are kept on the device, newest first, per trip', async () => {
+    const db = new ExpResDb(`submissions-${Math.random()}`);
+    const repo = createRepo(db, { blobStorage: 'bytes' });
+    expect(await repo.getClaimant()).toEqual({ name: '', email: '', employeeId: '' });
+    await repo.saveClaimant({ name: 'Asha', email: 'a@example.org', employeeId: '' });
+    expect(await repo.getClaimant()).toEqual({ name: 'Asha', email: 'a@example.org', employeeId: '' });
+    const row = { tripName: 'T', reviewToken: 'r', ownerToken: 'o', totalMinor: 100, itemCount: 1 };
+    await repo.saveSubmission({ id: 'a', tripId: 't1', submittedAt: '2026-11-01T00:00:00Z', ...row });
+    await repo.saveSubmission({ id: 'b', tripId: 't1', submittedAt: '2026-11-02T00:00:00Z', ...row });
+    await repo.saveSubmission({ id: 'c', tripId: 't2', submittedAt: '2026-11-03T00:00:00Z', ...row });
+    expect((await repo.listSubmissions('t1')).map((s) => s.id)).toEqual(['b', 'a']);
+  });
+
   it('REQ-CAP-11: a version-1 database keeps all its data when opened by the current app, and learns its payee spellings', async () => {
     const name = `migrate-${++counter}`;
     const old = new Dexie(name);
@@ -337,7 +350,7 @@ describe('REQ-CAP-11: opening older data with a newer app version', () => {
     const db = new ExpResDb(name);
     opened.push(db);
     await db.open();
-    expect(db.verno).toBe(3); // the current schema version: the upgrade runs through every step
+    expect(db.verno).toBe(4); // the current schema version: the upgrade runs through every step
     expect(await db.grants.count()).toBe(1);
     expect(await db.expenses.count()).toBe(3);
     const payees = (await db.payees.toArray()).sort((a, b) => b.count - a.count);
@@ -527,7 +540,7 @@ describe('REQ-CSV-05, REQ-CSV-08: statement pairs and ticked rows in storage', (
     const db = new ExpResDb(name);
     opened.push(db);
     await db.open();
-    expect(db.verno).toBe(3);
+    expect(db.verno).toBe(4);
     expect(await db.grants.count()).toBe(1);
     expect(await db.bankProfiles.count()).toBe(0);
   });

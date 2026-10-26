@@ -1,5 +1,8 @@
 import { useEffect, type ReactElement } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
+import { ClaimPage } from '../features/claim/ClaimPage.tsx';
+import { OwnerPage } from '../features/claim/OwnerPage.tsx';
+import { ReviewPage } from '../features/claim/ReviewPage.tsx';
 import { HomePage } from '../features/home/HomePage.tsx';
 import { ComingSoon } from '../features/placeholders/ComingSoon.tsx';
 import { ExpenseNewPage } from '../features/live/ExpenseNewPage.tsx';
@@ -31,9 +34,9 @@ const screens: Record<string, ReactElement> = {
   inbox: <InboxPage />,
   'inbox-item': <InboxItemPage />,
   settings: <SettingsPage />,
-  'reviewer-sample': (
-    <ComingSoon heading="Sample claim" note="The reviewer view of a sample claim arrives in milestone M3." />
-  ),
+  claim: <ClaimPage />,
+  review: <ReviewPage />,
+  owner: <OwnerPage />,
   'not-found': <ComingSoon heading="Page not found" note="That address does not exist in ExpRes." />,
 };
 

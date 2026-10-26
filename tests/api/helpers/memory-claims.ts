@@ -12,7 +12,7 @@ export function memoryClaimRepo() {
   const repo: ClaimRepo = {
     async create(claim: NewClaim, stored: StoredFile[]) {
       for (const e of claims.values()) {
-        if (e.claim.idempotencyKey === claim.idempotencyKey) return e.reviewHash === claim.reviewHash && e.ownerHash === claim.ownerHash ? { result: 'duplicate' } : { result: 'conflict' };
+        if (e.claim.idempotencyKey === claim.idempotencyKey) return e.reviewHash === claim.reviewHash && e.ownerHash === claim.ownerHash && JSON.stringify(e.claim.payload) === JSON.stringify(claim.payload) ? { result: 'duplicate' } : { result: 'conflict' };
       }
       claims.set(claim.id, { claim: { id: claim.id, idempotencyKey: claim.idempotencyKey, status: 'submitted', submittedAt: claim.submittedAt, payload: claim.payload }, reviewHash: claim.reviewHash, ownerHash: claim.ownerHash });
       for (const f of stored) files.set(`${claim.id}/${f.fileId}`, f);

@@ -35,6 +35,8 @@ Screenshot recognition runs on the device with Tesseract. Its files (~15 MB, of 
 
 The statement screen reads a bank's CSV on the device; `fixtures/sample-statement.csv` is a synthetic example (also downloadable from that screen).
 
+A claim is prepared on the trip's **Prepare claim** screen (preview, PDF made on the device, Submit). Submitting stores the claim on the server and gives two private links: `/review/<token>` for the grant officer and `/claim/<token>` for the researcher. `/review/sample` is a built-in sample claim made of invented data (`node scripts/make-sample-assets.ts` rebuilds its picture from `fixtures/`). Specs: `specs/05-claim-and-review.md`.
+
 Never commit real receipts or invoices: `IMG_*.jpeg` is excluded locally in `.git/info/exclude`, and tests use the synthetic images in `fixtures/` (`npm run fixtures`).
 
 Check that the server and database work: with `npm run dev` running, open http://localhost:5173/api/health. It should show `{"ok":true,"db":{"hits":…}}`, and `hits` goes up on every reload.

@@ -7,6 +7,7 @@ import { evaluateTrip } from '../../../shared/rules/evaluate-trip.ts';
 import { CATEGORY_IDS, CATEGORY_LABELS } from '../../../shared/types.ts';
 import { SelectField } from '../../components/fields.tsx';
 import { btn, btnPrimary, card, h1, mutedText } from '../../components/ui.ts';
+import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { BalanceIndicator } from '../balance/BalanceIndicator.tsx';
@@ -16,6 +17,7 @@ import { ExpenseList, shownFlags } from './ExpenseList.tsx';
 export function TripPage() {
   const { tripId = '' } = useParams();
   const data = useLive(() => queries.tripDetail(tripId), [tripId]);
+  const submissions = useLive(() => repo.listSubmissions(tripId), [tripId]) ?? [];
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
@@ -62,8 +64,23 @@ export function TripPage() {
         <Link to={`/trips/${trip.id}/expenses/new`} className={btnPrimary}>Add expense</Link>
         <Link to={`/trips/${trip.id}/statement`} className={btn}>Match bank statement</Link>
         <Link to="/inbox" className={btn}>Open Inbox</Link>
+        {expenses.length > 0 && <Link to={`/trips/${trip.id}/claim`} className={btnPrimary} data-testid="prepare-claim">Prepare claim</Link>}
         <Link to={`/trips/${trip.id}/edit`} className={btn}>Edit trip</Link>
       </div>
+
+      {submissions.length > 0 && (
+        <section className={`${card} mb-6`} aria-labelledby="sent-claims" data-testid="sent-claims">
+          <h2 id="sent-claims" className="font-display text-lg font-semibold">Submitted claims</h2>
+          <ul className="mt-2 grid gap-2">
+            {submissions.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span>{new Date(s.submittedAt).toLocaleDateString()} · {s.itemCount} {s.itemCount === 1 ? 'item' : 'items'} · <span className="amount">{formatInr(s.totalMinor)}</span></span>
+                <Link to={`/claim/${s.ownerToken}`} className="font-semibold text-breeze-deep underline">See the outcome</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {expenses.length === 0 ? (
         <p className={`${card} ${mutedText}`} data-testid="empty-trip">

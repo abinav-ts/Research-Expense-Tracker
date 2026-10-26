@@ -94,32 +94,35 @@ export function claimRoutes(depsFor: (c: Context) => ClaimDeps) {
     return c.json({ ok: true, view: await viewOf(deps, claim) });
   });
 
-  app.get('/api/review/:token/files/:fileId', async (c) => {
-    const deps = depsFor(c);
-    if (await over(c, deps, 'read')) return tooMany(c);
-    const token = c.req.param('token');
-    const fileId = c.req.param('fileId');
-    let found: { mime: string; data: ArrayBuffer | Uint8Array } | null;
-    if (token === SAMPLE_TOKEN) {
-      const f = SAMPLE_FILES[fileId];
-      found = f ? { mime: f.mime, data: f.bytes } : null;
-    } else {
-      const claim = await lookup(c, deps, 'review', token);
-      if (claim instanceof Response) return claim;
-      found = await deps.claims.file(claim.id, fileId);
-    }
-    if (!found) return c.json({ ok: false, error: 'File not found.' }, 404);
-    // A file is only ever shown, never run: no sniffing, and a sandbox if someone opens it directly.
-    return new Response(found.data as BodyInit, {
-      headers: {
-        'Content-Type': found.mime === 'text/plain' ? 'text/plain; charset=utf-8' : found.mime,
-        'X-Content-Type-Options': 'nosniff',
-        'Content-Security-Policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
-        'Content-Disposition': 'inline',
-        'Cache-Control': 'private, no-store',
-      },
+  // The reviewer and the owner can both open the proofs of their own claim.
+  for (const kind of ['review', 'owner'] as const) {
+    app.get(`/api/${kind}/:token/files/:fileId`, async (c) => {
+      const deps = depsFor(c);
+      if (await over(c, deps, 'read')) return tooMany(c);
+      const token = c.req.param('token');
+      const fileId = c.req.param('fileId');
+      let found: { mime: string; data: ArrayBuffer | Uint8Array } | null;
+      if (kind === 'review' && token === SAMPLE_TOKEN) {
+        const f = SAMPLE_FILES[fileId];
+        found = f ? { mime: f.mime, data: f.bytes } : null;
+      } else {
+        const claim = await lookup(c, deps, kind, token);
+        if (claim instanceof Response) return claim;
+        found = await deps.claims.file(claim.id, fileId);
+      }
+      if (!found) return c.json({ ok: false, error: 'File not found.' }, 404);
+      // A file is only ever shown, never run: no sniffing, and a sandbox if someone opens it directly.
+      return new Response(found.data as BodyInit, {
+        headers: {
+          'Content-Type': found.mime === 'text/plain' ? 'text/plain; charset=utf-8' : found.mime,
+          'X-Content-Type-Options': 'nosniff',
+          'Content-Security-Policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+          'Content-Disposition': 'inline',
+          'Cache-Control': 'private, no-store',
+        },
+      });
     });
-  });
+  }
 
   app.put('/api/review/:token/items/:itemId', async (c) => {
     const deps = depsFor(c);

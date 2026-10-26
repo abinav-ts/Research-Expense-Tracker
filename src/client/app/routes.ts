@@ -18,12 +18,14 @@ export const routes: readonly RouteDef[] = [
   { id: 'trip', path: '/trips/:tripId', sample: '/trips/none', title: 'Trip', shell: 'researcher' },
   { id: 'trip-edit', path: '/trips/:tripId/edit', sample: '/trips/none/edit', title: 'Edit trip', shell: 'researcher' },
   { id: 'statement', path: '/trips/:tripId/statement', sample: '/trips/none/statement', title: 'Bank statement', shell: 'researcher' },
+  { id: 'claim', path: '/trips/:tripId/claim', sample: '/trips/none/claim', title: 'Prepare claim', shell: 'researcher' },
   { id: 'expense-new', path: '/trips/:tripId/expenses/new', sample: '/trips/none/expenses/new', title: 'Add expense', shell: 'researcher' },
   { id: 'expense', path: '/expenses/:expenseId', sample: '/expenses/none', title: 'Expense', shell: 'researcher' },
   { id: 'inbox', path: '/inbox', sample: '/inbox', title: 'Inbox', shell: 'researcher' },
   { id: 'inbox-item', path: '/inbox/:itemId', sample: '/inbox/none', title: 'Inbox item', shell: 'researcher' },
   { id: 'settings', path: '/settings', sample: '/settings', title: 'Settings', shell: 'researcher' },
-  { id: 'reviewer-sample', path: '/review/sample', sample: '/review/sample', title: 'Review sample claim', shell: 'reviewer' },
+  { id: 'review', path: '/review/:token', sample: '/review/sample', title: 'Review claim', shell: 'reviewer' },
+  { id: 'owner', path: '/claim/:token', sample: '/claim/none', title: 'Your claim', shell: 'reviewer' },
   { id: 'not-found', path: '*', sample: '/no-such-page', title: 'Page not found', shell: 'researcher' },
 ];
 

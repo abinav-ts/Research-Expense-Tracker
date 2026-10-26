@@ -37,8 +37,9 @@ test.describe('M0 PWA shell', () => {
     await expect(page.locator('[data-testid="brand-logo"]')).toHaveCount(1);
     await expect(page.getByRole('heading', { name: 'Your grants' })).toBeVisible();
 
+    // The reviewer route opens from the app shell too; the claim itself needs the network, and the page says so.
     await page.goto('/review/sample');
-    await expect(page.getByRole('heading', { name: 'Sample claim' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'The claim could not be loaded' })).toBeVisible();
 
     // /api is never served from the cache.
     const outcome = await page.evaluate(() => fetch('/api/health').then((r) => `status ${r.status}`, () => 'network error'));

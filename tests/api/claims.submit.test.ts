@@ -33,6 +33,16 @@ describe('REQ-CLM-04: submitting a claim', () => {
     expect(res.status).toBe(409);
   });
 
+  it('REQ-CLM-04: the same key and links but different content is refused, never reported as "already sent"', async () => {
+    const t = testApp();
+    const s = submission();
+    await t.submit(s);
+    const changed = structuredClone(s.payload);
+    changed.items[1]!.description = 'Changed after the first try';
+    const res = await t.submit(submission({ payload: changed, reviewToken: s.reviewToken, ownerToken: s.ownerToken }));
+    expect(res.status).toBe(409);
+  });
+
   it('REQ-CLM-04: a claim with an error flag cannot be submitted', async () => {
     const t = testApp();
     const payload = validPayload();

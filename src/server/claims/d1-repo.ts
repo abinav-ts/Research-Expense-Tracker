@@ -1,5 +1,5 @@
 import { claimPayloadSchema, type ItemReview, type ClaimStatus } from '../../shared/claim.ts';
-import type { ClaimRepo, StoredClaim, StoredFile } from './repo.ts';
+import type { ClaimRepo, NewClaim, StoredClaim, StoredFile } from './repo.ts';
 
 interface ClaimRow {
   id: string;
@@ -31,6 +31,10 @@ function toBuffer(value: unknown): ArrayBuffer {
   throw new Error('unreadable file data');
 }
 
+/** A repeated Submit is a duplicate only when it is the very same claim: same links and same content. */
+const same = (row: { review_hash: string; owner_hash: string; payload: string }, claim: NewClaim) =>
+  row.review_hash === claim.reviewHash && row.owner_hash === claim.ownerHash && row.payload === JSON.stringify(claim.payload);
+
 const COLUMNS = 'id, idempotency_key, status, submitted_at, decided_at, overall_comment, payload';
 
 export function d1ClaimRepo(db: D1Database): ClaimRepo {
@@ -41,10 +45,10 @@ export function d1ClaimRepo(db: D1Database): ClaimRepo {
   return {
     async create(claim, files: StoredFile[]) {
       const existing = await db
-        .prepare('SELECT review_hash, owner_hash FROM claims WHERE idempotency_key = ?1')
+        .prepare('SELECT review_hash, owner_hash, payload FROM claims WHERE idempotency_key = ?1')
         .bind(claim.idempotencyKey)
-        .first<{ review_hash: string; owner_hash: string }>();
-      if (existing) return existing.review_hash === claim.reviewHash && existing.owner_hash === claim.ownerHash ? { result: 'duplicate' } : { result: 'conflict' };
+        .first<{ review_hash: string; owner_hash: string; payload: string }>();
+      if (existing) return same(existing, claim) ? { result: 'duplicate' } : { result: 'conflict' };
       try {
         await db.batch([
           db
@@ -56,8 +60,8 @@ export function d1ClaimRepo(db: D1Database): ClaimRepo {
         ]);
       } catch (error) {
         // Two Submits with one key racing each other: the loser sees the winner's claim.
-        const again = await db.prepare('SELECT review_hash, owner_hash FROM claims WHERE idempotency_key = ?1').bind(claim.idempotencyKey).first<{ review_hash: string; owner_hash: string }>();
-        if (again) return again.review_hash === claim.reviewHash && again.owner_hash === claim.ownerHash ? { result: 'duplicate' } : { result: 'conflict' };
+        const again = await db.prepare('SELECT review_hash, owner_hash, payload FROM claims WHERE idempotency_key = ?1').bind(claim.idempotencyKey).first<{ review_hash: string; owner_hash: string; payload: string }>();
+        if (again) return same(again, claim) ? { result: 'duplicate' } : { result: 'conflict' };
         throw error;
       }
       return { result: 'created' };

@@ -62,3 +62,17 @@ export async function loadDemoAndOpenTrip(page: Page) {
   await page.getByRole('link', { name: 'SampleConf 2026' }).click();
   await expect(page.getByTestId('expense-row')).toHaveCount(4);
 }
+
+/** Demo trip with every expense matched to its statement debit, so it can be claimed. Lands on the trip page. */
+export async function verifiedDemoTrip(page: Page) {
+  await loadDemoAndOpenTrip(page);
+  await page.getByRole('link', { name: 'Match bank statement' }).click();
+  await page.getByLabel('Choose statement file').setInputFiles(new URL('../../fixtures/sample-statement.csv', import.meta.url).pathname);
+  await page.getByRole('button', { name: 'Use these columns' }).click();
+  await page.getByRole('button', { name: 'Confirm all 3' }).click();
+  await page.getByTestId('foreign-choice').getByRole('radio').first().check();
+  await page.getByTestId('foreign-choice').getByRole('button', { name: 'Use this debit' }).click();
+  await expect(page.getByTestId('matched-pair')).toHaveCount(4);
+  await page.getByRole('link', { name: /SampleConf 2026/ }).first().click();
+  await expect(page.getByTestId('verified-percent')).toHaveText('100% verified');
+}

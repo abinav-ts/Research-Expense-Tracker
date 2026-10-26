@@ -141,6 +141,10 @@ describe('REQ-REV-04: proofs', () => {
     expect((await t.request(`${review}/files/nope`)).status).toBe(404);
     expect((await t.request(`/api/review/${'a'.repeat(43)}/files/f-upi`)).status).toBe(404);
     expect((await t.request(`/api/owner/${other.ownerToken}`)).status).toBe(200);
+    // The owner opens their own proofs with their own link; the two links do not open each other's endpoints.
+    const png = other.payload.files.find((f) => f.mime === 'image/png')!;
+    expect((await t.request(`/api/owner/${other.ownerToken}/files/${png.id}`)).status).toBe(200);
+    expect((await t.request(`/api/owner/${other.reviewToken}/files/${png.id}`)).status).toBe(404);
   });
 });
 

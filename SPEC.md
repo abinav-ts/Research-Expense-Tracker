@@ -275,7 +275,7 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-CLM-01 | Claim preview = exactly what reviewer sees | M | 05 |
 | REQ-CLM-02 | Claim pack PDF (client-side) | M | 05 |
 | REQ-CLM-03 | Claimant details and declaration | M | 05 |
-| REQ-CLM-04 | Submit; queued when offline | M | 05 |
+| REQ-CLM-04 | Submit (offline: explains; the queue is REQ-OFF-04) | M | 05 |
 | REQ-CLM-05 | CSV export of claim items | S | 05 |
 | REQ-CLM-06 | Submitted claim immutable; resubmit as revision | S | 05 |
 | REQ-CLM-07 | Researcher sees claim status | S | 05 |
@@ -322,11 +322,11 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 
 ## 9. Cross-cutting: privacy requirements
 
-- **REQ-PRIV-01** — The system shall not transmit expenses, screenshots, CSV contents or grant data to any server before the user explicitly taps *Submit claim*.
-- **REQ-PRIV-02** — On submit, the system shall transmit only the selected claim items, their attachments and the claimant/grant/trip fields shown in the preview. For statement evidence only the selected rows' date, (user-editable) narration, debit amount and reference are transmitted; the balance column, account number, other columns and unselected rows are never transmitted.
-- **REQ-PRIV-03** — Before submit the system shall show the exact content the reviewer will see and require explicit confirmation.
-- **REQ-PRIV-04** — Images shall be re-encoded on import so EXIF/location metadata is dropped.
-- **REQ-PRIV-05** — At runtime the app shall load no third-party scripts, fonts, analytics or CDN assets.
+- **REQ-PRIV-01** [built] — The system shall not transmit expenses, screenshots, CSV contents or grant data to any server before the user explicitly taps *Submit claim*.
+- **REQ-PRIV-02** [built] — On submit, the system shall transmit only the selected claim items, their attachments and the claimant/grant/trip fields shown in the preview. For statement evidence only the selected rows' date, (user-editable) narration, debit amount and reference are transmitted; the balance column, account number, other columns and unselected rows are never transmitted.
+- **REQ-PRIV-03** [built] — Before submit the system shall show the exact content the reviewer will see and require explicit confirmation.
+- **REQ-PRIV-04** [built] — Images shall be re-encoded before they are sent (at Submit, with the 1 MB size limit) so EXIF/location metadata is dropped. Images kept on the device are stored as they were added.
+- **REQ-PRIV-05** [built] — At runtime the app shall load no third-party scripts, fonts, analytics or CDN assets.
 - **REQ-PRIV-06** (could) — The user can draw black boxes over parts of a screenshot (e.g., account balance) before attaching it.
 
 Acceptance (all): verified by an API test that inspects the submit payload and by an offline/network-inspector check in M4.
@@ -335,7 +335,7 @@ Acceptance (all): verified by an API test that inspects the submit payload and b
 
 - **REQ-DEMO-01** — A public HTTPS URL serves the app. The landing page has *Researcher* and *Reviewer (sample claim)* entry points and a one-paragraph explanation.
 - **REQ-DEMO-02** [built] — *Load demo data* creates a sample grant (with a sample grant document), trip and expenses (domestic INR items, one card-SMS item and one foreign-currency card expense, all left *pending verification*) with synthetic proofs, each clearly watermarked "SAMPLE". No real brand screens or real data.
-- **REQ-DEMO-03** — On first boot the server seeds a sample submitted claim reachable via a fixed review link shown on the landing page (so the reviewer view can be demoed even if the DB resets).
+- **REQ-DEMO-03** [built] — The server provides a built-in sample claim (built into the Worker from synthetic data, so it survives a database reset) at the fixed review link `/review/sample`, shown on the landing page. Its decisions stay in the visitor's browser.
 - **REQ-DEMO-04** [built] — A synthetic sample bank CSV can be downloaded from the statement segment. It has a preamble block, domestic debits, unrelated personal rows, and debits matching every demo bank-paid expense (the foreign one with an INR amount different from its estimate), so reconcile and privacy filtering can be demoed.
 - **REQ-DEMO-05** [built] — `fixtures/` contains a generic UPI-style payment-success screenshot, a card-alert SMS (text and image) and a foreign invoice image, all synthetic and watermarked. The recognition step extracts amount, date, payee and reference from the first two correctly (this is the demo's recognition proof). Fixtures use generic layouts, never copies of real bank or UPI app screens.
 - **Hosting (D-1, resolved).** Cloudflare free plan: one Worker serves the built PWA and the API, and a D1 database stores submitted claims. HTTPS is included (needed for PWA install, Share Target and the service worker). GitHub holds the source only: GitHub Pages serves static files and cannot store claims. Free-plan limits that matter: 2 MB per row, 100,000 row-writes per day, 50 queries per request (use `batch`). REQ-DEMO-03 still seeds the sample claim so the reviewer view works on an empty database. Confirm at signup that no payment card is needed.
@@ -406,7 +406,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
-- 2026-10-26 v0.6.0 — M3 spec drafted (`specs/05-claim-and-review.md`): claim preview = reviewer view, PDF on the device, submit with two private links, reviewer decisions with lock, link security, the claim-path privacy checks; eight decisions listed for the owner. Building started at the owner's instruction.
+- 2026-10-26 v0.6.0 — M3 spec drafted and built (`specs/05-claim-and-review.md`): claim preview = reviewer view, PDF on the device, submit with two private links (made on the device, stored as hashes), reviewer decisions with lock, link security, the claim-path privacy checks, the built-in sample claim (decisions stay in the browser); eleven decisions listed for the owner. Built at the owner's instruction before review; changes welcome.
 - 2026-10-26 v0.5.4 — Statement import hardened (REQ-CSV-01/02/09): files are identified from their first bytes (PDF, Excel, pictures get a plain message), UTF-16 and Windows-1252 are decoded, files with no header row or unusual column names are read from their contents, decimal-comma and many currency/Dr-Cr notations are accepted, month-name-first dates added. 35 new unit and 3 new browser tests. One real defect found by the browser tests: a hook placed after an early return crashed the statement page (unit tests could not see it).
 - 2026-10-26 v0.5.3 — Statement screen built: REQ-CSV-01/02/03/04/05/08/09/10 (read a bank CSV on the device, guess and remember the columns per bank, table with search and the trip dates, tick rows and categorise, reconcile automatically for INR and by choice for foreign spend, by hand, unlink; sample file downloadable). Tested on five layouts (three Indian-bank styles, a signed amount, and an amount with Dr/Cr). Statement rows not ticked or paired are never saved. REQ-CSV-11 (optional keep-on-device) recorded as a possible later add-on. Date styles are four families, not seven formats. Two real defects found by the tests: a cramped description on phone widths, and a rejected proposal disappearing instead of moving to the by-hand list.
 - 2026-10-26 v0.5.2 — Rules engine built: `evaluate()` with REQ-RULE-01/02/03/04/05/06/08/09/11/12/13, `buildClaimDraft`, `evaluateTrip`; the trip, expense list and expense page now show its flags (chips with words, full text and a justification box on the expense page, "N items need fixing"); REQ-BAL-07 verified percentage and the two-section list. The statement screen (REQ-CSV-*) follows.

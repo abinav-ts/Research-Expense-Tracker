@@ -36,6 +36,20 @@ export interface BankProfileRow {
   mapping: StatementMapping;
   updatedAt: string;
 }
+/**
+ * A claim that was sent (REQ-CLM-04, REQ-CLM-07). Kept so the links can be shown again. The two links are secrets of the
+ * researcher's own; they live only on this device (and in the copies the researcher shares).
+ */
+export interface SubmissionRow {
+  id: string;
+  tripId: string;
+  tripName: string;
+  reviewToken: string;
+  ownerToken: string;
+  submittedAt: string;
+  totalMinor: number;
+  itemCount: number;
+}
 export interface MetaRow {
   key: string;
   value: string;
@@ -53,6 +67,7 @@ export class ExpResDb extends Dexie {
   payees!: Table<PayeeRow, string>;
   anchors!: Table<AnchorRow, string>;
   bankProfiles!: Table<BankProfileRow, string>;
+  submissions!: Table<SubmissionRow, string>;
 
   constructor(name = 'expres') {
     super(name);
@@ -83,5 +98,7 @@ export class ExpResDb extends Dexie {
       });
     // Version 3 (REQ-CSV-02): remembered bank statement layouts.
     this.version(3).stores({ bankProfiles: 'key' });
+    // Version 4 (REQ-CLM-04): claims that were submitted, with their links.
+    this.version(4).stores({ submissions: 'id, tripId' });
   }
 }

@@ -1,0 +1,7 @@
+# REQ-REV-07: claim pages are never indexed, and are not cached by shared caches.
+/review/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+/claim/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store

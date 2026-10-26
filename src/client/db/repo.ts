@@ -11,7 +11,7 @@ import type { GrantFields } from '../../shared/grant.ts';
 import type { TripFields } from '../../shared/trip.ts';
 import type { Attachment, CategoryId, Expense, Grant, GrantDocument, InboxItem, ProofType, Trip } from '../../shared/types.ts';
 import { sha256Hex } from '../lib/hash.ts';
-import type { BlobRow, ExpResDb } from './schema.ts';
+import type { BlobRow, ExpResDb, SubmissionRow } from './schema.ts';
 
 export class StorageError extends Error {
   constructor(message = 'Could not save to this device. Free up space or try again; your last change was not saved.') {
@@ -88,7 +88,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
       throw new StorageError();
     }
   }
-  const allTables = [db.grants, db.trips, db.expenses, db.grantDocs, db.inbox, db.blobs, db.payeeCategories, db.meta, db.payees, db.anchors, db.bankProfiles];
+  const allTables = [db.grants, db.trips, db.expenses, db.grantDocs, db.inbox, db.blobs, db.payeeCategories, db.meta, db.payees, db.anchors, db.bankProfiles, db.submissions];
 
   /**
    * Decides how a file is stored. Call this BEFORE opening a database transaction: reading a file's bytes is not
@@ -512,6 +512,26 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
         await db.anchors.clear();
         await db.payeeCategories.clear();
       }));
+    },
+    // ---- claims (REQ-CLM-03, REQ-CLM-04, REQ-CLM-07) ----
+    /** The claimant's details from the last claim, so the next one starts filled in. */
+    async getClaimant(): Promise<{ name: string; email: string; employeeId: string }> {
+      const raw = (await db.meta.get('claimant'))?.value;
+      try {
+        const v = raw ? (JSON.parse(raw) as Partial<Record<'name' | 'email' | 'employeeId', string>>) : {};
+        return { name: v.name ?? '', email: v.email ?? '', employeeId: v.employeeId ?? '' };
+      } catch {
+        return { name: '', email: '', employeeId: '' };
+      }
+    },
+    async saveClaimant(c: { name: string; email: string; employeeId: string }): Promise<void> {
+      await write(async () => void (await db.meta.put({ key: 'claimant', value: JSON.stringify(c) })));
+    },
+    async saveSubmission(row: SubmissionRow): Promise<void> {
+      await write(async () => void (await db.submissions.put(row)));
+    },
+    async listSubmissions(tripId: string): Promise<SubmissionRow[]> {
+      return (await db.submissions.where('tripId').equals(tripId).toArray()).sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1));
     },
     async lastTripId(): Promise<string | undefined> {
       return (await db.meta.get('lastTripId'))?.value;
