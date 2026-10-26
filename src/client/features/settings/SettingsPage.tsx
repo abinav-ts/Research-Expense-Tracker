@@ -1,16 +1,27 @@
 import { useState } from 'react';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
-import { btnDanger, card, h1, h2, mutedText } from '../../components/ui.ts';
+import { btn, btnDanger, card, h1, h2, mutedText } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { attempt } from '../../lib/errors.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { OcrStatus } from '../../ocr/OcrStatus.tsx';
+
+/** Removes the saved copy of the app (service workers and their caches) and reloads. Data in IndexedDB and the recognition data stay. */
+async function refreshAppFiles(): Promise<void> {
+  try {
+    for (const registration of await navigator.serviceWorker.getRegistrations()) await registration.unregister();
+    for (const key of await caches.keys()) if (!key.startsWith('expres-ocr')) await caches.delete(key);
+  } finally {
+    location.reload();
+  }
+}
 
 /** Settings (M1b: what ExpRes has learned, REQ-CAP-16). Backup and storage controls arrive with REQ-CAP-12 and REQ-OFF-08. */
 export function SettingsPage() {
   const counts = useLive(() => repo.learningCounts());
   const [confirming, setConfirming] = useState(false);
   const total = counts ? counts.payees + counts.formats + counts.categories : 0;
+  const [refreshing, setRefreshing] = useState(false);
 
   return (
     <div>
@@ -40,6 +51,24 @@ export function SettingsPage() {
             onConfirm={async () => { await attempt(() => repo.clearLearning()); setConfirming(false); }}
           />
         )}
+      </section>
+
+      <section className={`${card} mb-6`} aria-labelledby="app-heading">
+        <h2 id="app-heading" className={`${h2} mb-2`}>This app</h2>
+        <p className="mb-3">Version: <span data-testid="app-version">{__APP_VERSION__}</span></p>
+        <p className={`mb-3 ${mutedText}`}>
+          If this device keeps showing an old version, "Refresh app files" throws away the saved copy of the app and loads the
+          latest one. Your grants, trips, expenses and files are not touched.
+        </p>
+        <button
+          type="button" className={btn} disabled={refreshing}
+          onClick={async () => {
+            setRefreshing(true);
+            await refreshAppFiles();
+          }}
+        >
+          Refresh app files
+        </button>
       </section>
 
       <section className={card} aria-labelledby="reading-heading">

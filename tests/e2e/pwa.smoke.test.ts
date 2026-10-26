@@ -98,4 +98,51 @@ test.describe('M0 PWA shell', () => {
       await new Promise((resolve) => proxy.close(resolve));
     }
   });
+
+  test('REQ-OFF-06: a page that cannot show the update bar (an older release of the app) is moved to the new version at once, not left waiting for ever', async ({ page }) => {
+    // Pretend this page is an older release: it never answers the service worker's "can you offer an update?" question.
+    await page.addInitScript(() => {
+      const original = navigator.serviceWorker.addEventListener.bind(navigator.serviceWorker);
+      (navigator.serviceWorker as unknown as { addEventListener: unknown }).addEventListener = (type: string, ...rest: unknown[]) =>
+        type === 'message' ? undefined : (original as (t: string, ...r: unknown[]) => void)(type, ...rest);
+    });
+    let newer = '';
+    const proxy = http.createServer((req, res) => {
+      const headers = { ...req.headers, host: 'localhost:4173', 'accept-encoding': 'identity' };
+      delete headers['if-none-match'];
+      delete headers['if-modified-since'];
+      const upstream = http.request({ host: 'localhost', port: 4173, path: req.url, method: req.method, headers }, (up) => {
+        if (req.url?.split('?')[0] !== '/sw.js') {
+          res.writeHead(up.statusCode ?? 502, up.headers);
+          up.pipe(res);
+          return;
+        }
+        const chunks: Buffer[] = [];
+        up.on('data', (c: Buffer) => chunks.push(c));
+        up.on('end', () => {
+          const h = { ...up.headers };
+          delete h['content-length'];
+          res.writeHead(up.statusCode ?? 502, h);
+          res.end(Buffer.concat(chunks).toString() + newer);
+        });
+      });
+      req.pipe(upstream);
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, 'localhost', resolve));
+    try {
+      await page.goto(`http://localhost:${(proxy.address() as AddressInfo).port}/`);
+      await page.evaluate(() => navigator.serviceWorker.ready);
+      await page.reload();
+      newer = '\n// a newer version';
+      await page.evaluate(async () => void (await (await navigator.serviceWorker.getRegistration())!.update()));
+      // It must not be left waiting: the new worker takes over by itself.
+      await page.waitForFunction(async () => {
+        const r = await navigator.serviceWorker.getRegistration();
+        return !r!.waiting && !r!.installing;
+      }, undefined, { timeout: 20_000 });
+      await expect(page.getByTestId('update-bar')).toHaveCount(0); // and there is no bar, because this "old" page cannot show one
+    } finally {
+      await new Promise((resolve) => proxy.close(resolve));
+    }
+  });
 });

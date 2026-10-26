@@ -11,6 +11,11 @@ const CHECK_EVERY_MS = 30 * 60 * 1000;
 
 export function startPwa(): void {
   if (!import.meta.env.PROD) return; // no service worker in dev, so cached files never hide code changes
+  // A new service worker asks every open page whether it can show the update bar; answering is what makes it wait for the
+  // user's Reload instead of taking over at once (see sw.ts).
+  navigator.serviceWorker?.addEventListener('message', (event) => {
+    if ((event.data as { type?: string } | undefined)?.type === 'CAN_OFFER_UPDATE') event.ports[0]?.postMessage('yes');
+  });
   updateServiceWorker = registerSW({
     immediate: true,
     onOfflineReady() {

@@ -56,6 +56,8 @@ Tests: tests/e2e/ocr.smoke.test.ts
 Acceptance:
 - When a new service worker is waiting, a bar says "New version available" with a Reload button; Reload activates it. Until then the running version is left alone (the new one waits), so the app never swaps itself under a half-filled form. The app looks for a new version every 30 minutes and whenever the tab becomes visible again, not only on reload.
 - The app never reloads automatically while a form has unsaved changes.
+- A new version only waits if some open page can show the bar: when it installs, the service worker asks every open page "can you offer an update?". If none answers (every open tab is an older release that has no bar) it takes over at once, so a device can never be left on an old version for ever. Given a device that holds an older release, When a newer one is deployed, Then after at most two reloads the device runs the newer one.
+- Settings shows the version (commit and build time) and has "Refresh app files": it removes the saved copy of the app and reloads the latest, leaving all data and the recognition data in place.
 Tests: tests/e2e/pwa.smoke.test.ts
 
 ### REQ-OFF-07 — Online/offline indicator [MUST] [agreed]

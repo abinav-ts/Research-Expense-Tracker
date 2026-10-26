@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -7,7 +8,18 @@ import { brandHtml, brandTokens } from './build/brand.ts';
 
 const tokens = brandTokens();
 
+// Which build is this? Shown in Settings so a stuck or stale device can be recognised at a glance.
+const commit = (() => {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return 'unknown';
+  }
+})();
+const appVersion = `${commit} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     react(),
     tailwindcss(),

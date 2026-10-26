@@ -28,4 +28,29 @@ registerRoute(({ url }) => url.pathname.startsWith('/ocr/'), new CacheFirst({ ca
 self.addEventListener('message', (event) => {
   if ((event.data as { type?: string } | undefined)?.type === 'SKIP_WAITING') void self.skipWaiting();
 });
+
+// But waiting only makes sense if some open page can show the update bar. A tab still running an older release of the app
+// has no bar, so a new version would wait for ever and the device would stay stuck on the old one. So when a version installs,
+// every open page is asked "can you offer an update?"; if none answers, the new version takes over at once.
+const ASK_TIMEOUT_MS = 1000;
+function canOfferUpdate(client: Client): Promise<boolean> {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => resolve(false), ASK_TIMEOUT_MS);
+    channel.port1.onmessage = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    client.postMessage({ type: 'CAN_OFFER_UPDATE' }, [channel.port2]);
+  });
+}
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    (async () => {
+      const pages = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const answers = await Promise.all(pages.map(canOfferUpdate));
+      if (!answers.some(Boolean)) await self.skipWaiting(); // nobody to ask (first visit) or nobody can answer (older release)
+    })(),
+  );
+});
 clientsClaim();

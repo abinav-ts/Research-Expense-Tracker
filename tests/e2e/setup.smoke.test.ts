@@ -177,3 +177,19 @@ test.describe('REQ-SET-07: grant documents', () => {
     await expect(page.getByTestId('grant-doc')).toContainText('Too large to include in a claim (max 1 MB)');
   });
 });
+
+test.describe('REQ-OFF-06: refreshing a stale device', () => {
+  test('REQ-OFF-06: Settings shows which version this is, and "Refresh app files" reloads the latest app without touching the data', async ({ page }) => {
+    await createGrant(page);
+    await page.goto('/settings');
+    await expect(page.getByTestId('app-version')).toHaveText(/\S+ · \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    expect(await page.evaluate(async () => (await caches.keys()).some((k) => k.includes('precache')))).toBe(true);
+
+    await Promise.all([page.waitForEvent('load'), page.getByRole('button', { name: 'Refresh app files' }).click()]); // the page reloads itself
+    await expect(page.getByTestId('app-version')).toBeVisible();
+    await page.evaluate(() => navigator.serviceWorker.ready); // a fresh service worker is installed again
+    await page.goto('/grants');
+    await expect(page.getByTestId('grant-card')).toContainText('DST Sample Grant'); // data intact
+  });
+});
