@@ -123,7 +123,7 @@ test.describe('REQ-RULE-02: date outside the trip window', () => {
     await page.getByLabel(/^Amount/).fill('500');
     await page.getByLabel('Paid to (payee)').fill('Early Cafe');
     await page.getByRole('button', { name: 'Save expense' }).click();
-    await expect(page.getByTestId('expense-row')).toContainText('Date outside trip window');
+    await expect(page.getByTestId('expense-row').locator('[data-rule="DATE_OUT_OF_WINDOW"]')).toContainText('Date outside trip');
     await expect(remaining(page)).toHaveText('₹79,500.00 left'); // a warning never blocks or changes the amount
   });
 
@@ -132,15 +132,14 @@ test.describe('REQ-RULE-02: date outside the trip window', () => {
     await createTrip(page);
     await addExpense(page, { amount: '100', payee: 'In Window', date: '2026-11-12' });
     await addExpense(page, { amount: '200', payee: 'Way Early', date: '2026-10-25' });
-    await expect(page.getByTestId('flag-chip')).toHaveCount(1);
-    await page.getByLabel(/Flagged only/).check();
-    await expect(page.getByTestId('expense-row')).toHaveCount(1);
-    await expect(page.getByTestId('expense-row')).toContainText('Way Early');
+    const dateChips = page.locator('[data-testid="flag-chip"][data-rule="DATE_OUT_OF_WINDOW"]');
+    await expect(dateChips).toHaveCount(1);
+    await expect(page.getByTestId('expense-row').filter({ has: dateChips })).toContainText('Way Early');
 
     await page.getByRole('link', { name: 'Edit trip' }).click();
     await page.getByLabel('Start date').fill('2026-10-24');
     await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByTestId('flag-chip')).toHaveCount(0); // 25 Oct is now inside 22 Oct – 16 Nov
+    await expect(dateChips).toHaveCount(0); // 25 Oct is now inside 22 Oct – 16 Nov
     await expect(page.getByLabel(/Flagged only/)).toBeVisible();
   });
 
@@ -149,6 +148,6 @@ test.describe('REQ-RULE-02: date outside the trip window', () => {
     await createTrip(page);
     await addExpense(page, { amount: '200', payee: 'Way Early', date: '2026-10-25' });
     await page.getByTestId('expense-row').click();
-    await expect(page.getByTestId('expense-flag')).toContainText('Dated 25 Oct 2026, outside the allowed window 8 Nov 2026 to 16 Nov 2026');
+    await expect(page.locator('[data-testid="expense-flag"][data-rule="DATE_OUT_OF_WINDOW"]')).toContainText('Dated 25 Oct 2026, outside the allowed window 8 Nov 2026 to 16 Nov 2026');
   });
 });

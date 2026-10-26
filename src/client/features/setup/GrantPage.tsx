@@ -11,6 +11,7 @@ import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { BalanceIndicator } from '../balance/BalanceIndicator.tsx';
+import { VerifiedMeter } from '../balance/VerifiedMeter.tsx';
 import { GrantDocuments } from './GrantDocuments.tsx';
 
 export function GrantPage() {
@@ -29,7 +30,7 @@ export function GrantPage() {
       <p className={`mb-4 ${mutedText}`}>
         {grant.sponsor && `${grant.sponsor} · `}{formatDateLabel(grant.startDate)} to {formatDateLabel(grant.endDate)} · already utilised {formatInr(grant.utilisedBeforeMinor)}
       </p>
-      <div className={`${card} mb-4`}><BalanceIndicator grant={grant} expenses={expenses} /></div>
+      <div className={`${card} mb-4`}><BalanceIndicator grant={grant} expenses={expenses} /><VerifiedMeter expenses={expenses} /></div>
       <div className="flex flex-wrap gap-3">
         <Link to={`/grants/${grant.id}/edit`} className={btn}>Edit grant</Link>
         <button

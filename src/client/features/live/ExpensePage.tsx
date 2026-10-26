@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { currencyExponent } from '../../../shared/currency.ts';
 import { minorToText } from '../../../shared/money.ts';
-import { dateWindowFlag } from '../../../shared/rules/date-window.ts';
+import { evaluateTrip } from '../../../shared/rules/evaluate-trip.ts';
 import { microToText } from '../../../shared/trip.ts';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
 import { btn, btnDanger, h1 } from '../../components/ui.ts';
@@ -11,6 +11,7 @@ import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { ExpenseFormFields } from './ExpenseFormFields.tsx';
+import { FlagPanel } from './FlagPanel.tsx';
 import { ProofView } from './ProofView.tsx';
 
 /** REQ-CAP-06: edit all fields, view the proof, exclude/include, delete. */
@@ -27,7 +28,7 @@ export function ExpensePage() {
   if (!data.detail) return <p role="alert">That expense was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
   const { expense, trip, grant } = data.detail;
   const bufferDays = grant.rules.travelBufferDays;
-  const flag = dateWindowFlag(expense, trip, bufferDays);
+  const flags = evaluateTrip(grant, trip, data.existing).byItem.get(expense.id) ?? [];
   const exponent = currencyExponent(expense.originalCurrency);
   const back = `/trips/${trip.id}`;
 
@@ -35,7 +36,7 @@ export function ExpensePage() {
     <div>
       <p className="text-sm"><Link to={back} className="underline">{trip.name}</Link></p>
       <h1 className={`${h1} mb-1`}>{expense.payee}</h1>
-      {flag && <p role="status" className="mb-2 font-semibold text-state-low" data-testid="expense-flag">⚠ {flag.message}</p>}
+      <FlagPanel expenseId={expense.id} flags={flags} justification={expense.justification} />
       {expense.excluded && <p role="status" className="mb-2 font-semibold text-state-low">Excluded: not counted in the balance and left out of the claim.</p>}
       {expense.originalCurrency !== 'INR' && expense.inrStatus === 'pending' && <p className="mb-2 text-sm font-semibold text-state-low">The rupee amount is an estimate until it is matched to your bank statement.</p>}
 

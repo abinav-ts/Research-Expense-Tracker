@@ -3,15 +3,15 @@ import { Link, useParams } from 'react-router';
 import { formatDateLabel } from '../../../shared/dates.ts';
 import { applyFilters, tripTotals, type ExpenseFilters } from '../../../shared/grouping.ts';
 import { formatInr } from '../../../shared/money.ts';
-import { dateWindowFlag } from '../../../shared/rules/date-window.ts';
-import type { Flag } from '../../../shared/types.ts';
+import { evaluateTrip } from '../../../shared/rules/evaluate-trip.ts';
 import { CATEGORY_IDS, CATEGORY_LABELS } from '../../../shared/types.ts';
 import { SelectField } from '../../components/fields.tsx';
 import { btn, btnPrimary, card, h1, mutedText } from '../../components/ui.ts';
 import { queries } from '../../db/queries.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { BalanceIndicator } from '../balance/BalanceIndicator.tsx';
-import { ExpenseList } from './ExpenseList.tsx';
+import { VerifiedMeter } from '../balance/VerifiedMeter.tsx';
+import { ExpenseList, shownFlags } from './ExpenseList.tsx';
 
 export function TripPage() {
   const { tripId = '' } = useParams();
@@ -24,17 +24,16 @@ export function TripPage() {
   if (data === null) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
   const { trip, grant, expenses, grantExpenses } = data;
 
-  // Flags are derived from the current trip dates and grant buffer, so editing the trip re-evaluates them at once.
-  const flags = new Map<string, Flag>();
-  for (const e of expenses) {
-    const flag = dateWindowFlag(e, trip, grant.rules.travelBufferDays);
-    if (flag) flags.set(e.id, flag);
-  }
+  // Flags come from the one rules engine and are worked out on every render, so any change to the trip, the grant's rules
+  // or an expense is reflected at once (REQ-RULE-01).
+  const { flags: allFlags, byItem } = evaluateTrip(grant, trip, grantExpenses);
+  const flaggedIds = new Set([...byItem].filter(([, list]) => shownFlags(list).length > 0).map(([id]) => id));
+  const needFixing = [...new Set(allFlags.filter((f) => f.severity === 'error' && f.ruleId !== 'UNVERIFIED_AMOUNT').map((f) => f.itemId))];
   const filters: ExpenseFilters = {};
   if (category) filters.categoryId = category as ExpenseFilters['categoryId'];
   if (status) filters.status = status as ExpenseFilters['status'];
   if (flaggedOnly) filters.flaggedOnly = true;
-  const filtered = applyFilters(expenses, filters, new Set(flags.keys()));
+  const filtered = applyFilters(expenses, filters, flaggedIds);
   const totals = tripTotals(expenses); // whole trip, never the filtered view
 
   return (
@@ -45,6 +44,7 @@ export function TripPage() {
 
       <div className={`${card} mb-4`}>
         <BalanceIndicator grant={grant} expenses={grantExpenses} />
+        <VerifiedMeter expenses={grantExpenses} />
       </div>
       <dl className="amount mb-4 grid grid-cols-3 gap-2 text-center" data-testid="trip-totals">
         <div className={card}><dt className="text-sm text-ink-soft">Trip total</dt><dd className="font-semibold" data-testid="trip-total">{formatInr(totals.totalMinor)}</dd></div>
@@ -52,6 +52,12 @@ export function TripPage() {
         <div className={card}><dt className="text-sm text-ink-soft">Confirmed</dt><dd className="font-semibold" data-testid="trip-confirmed">{formatInr(totals.confirmedMinor)}</dd></div>
       </dl>
 
+      {needFixing.length > 0 && (
+        <p role="status" className="mb-4 rounded-lg border-2 border-state-over bg-surface p-3 font-semibold text-state-over" data-testid="need-fixing">
+          ✖ {needFixing.length} {needFixing.length === 1 ? 'item needs' : 'items need'} fixing before this can be claimed.{' '}
+          <Link to={`/expenses/${needFixing[0]}`} className="underline">Fix the first one</Link>
+        </p>
+      )}
       <div className="mb-6 flex flex-wrap gap-3">
         <Link to={`/trips/${trip.id}/expenses/new`} className={btnPrimary}>Add expense</Link>
         <Link to="/inbox" className={btn}>Open Inbox</Link>
@@ -72,7 +78,7 @@ export function TripPage() {
           </div>
           <label className="mb-4 flex min-h-11 items-center gap-2 font-semibold">
             <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)} className="h-5 w-5" />
-            Flagged only ({flags.size})
+            Flagged only ({flaggedIds.size})
           </label>
           {(category || status || flaggedOnly) && (
             <p className="mb-4 flex items-center gap-3" role="status">
@@ -80,7 +86,7 @@ export function TripPage() {
               <button type="button" className={btn} onClick={() => { setCategory(''); setStatus(''); setFlaggedOnly(false); }}>Clear filters</button>
             </p>
           )}
-          {filtered.length === 0 ? <p className={mutedText}>No expenses match these filters.</p> : <ExpenseList expenses={filtered} flags={flags} />}
+          {filtered.length === 0 ? <p className={mutedText}>No expenses match these filters.</p> : <ExpenseList expenses={filtered} flags={byItem} />}
         </>
       )}
     </div>

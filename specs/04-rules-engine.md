@@ -13,7 +13,7 @@ Covers: flags on claim items. Parent: `../SPEC.md`.
 
 ## Requirements
 
-### REQ-RULE-01 — Pure, deterministic evaluate() [MUST] [agreed]
+### REQ-RULE-01 — Pure, deterministic evaluate() [MUST] [built]
 Same input always gives the same output; no I/O, clocks or randomness; inputs are not changed.
 Acceptance:
 - Given the same draft and context evaluated twice, Then the two flag lists are equal and in the same order; the draft is unchanged afterwards.
@@ -32,7 +32,7 @@ Acceptance:
 - In M1 the flag is shown live in the form, the row chip, the "flagged only" filter and the expense page; from M2 it comes out of `evaluate()` like every other rule.
 Tests: tests/unit/rules.date-window.test.ts, tests/e2e/capture.smoke.test.ts
 
-### REQ-RULE-03 — OVER_CATEGORY_CAP [MUST] [agreed]
+### REQ-RULE-03 — OVER_CATEGORY_CAP [MUST] [built]
 Warn when a category's total on the claim exceeds `capPerTripMinor`; the flag attaches to the item that crosses the cap.
 Acceptance:
 - Given "Local transport" capped at ₹3,000.00 and items of ₹1,000.00, ₹1,500.00 and ₹1,000.00 in date order, Then only the third (running total ₹3,500.00) is flagged, with a message naming the cap and the amount over (₹500.00).
@@ -41,20 +41,20 @@ Acceptance:
 - Given two categories both over their caps, Then each gets its own flag.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-04 — OVER_GRANT_BALANCE [MUST] [agreed]
+### REQ-RULE-04 — OVER_GRANT_BALANCE [MUST] [built]
 Error when the claim total exceeds what is left of the grant for this claim (REQ-BAL-01 minus the grant's other trips).
 Acceptance:
 - Given a grant of ₹1,00,000 with ₹20,000 utilised before, other trips' spend ₹30,000, and a claim of items ₹20,000, ₹25,000 and ₹10,000 in date order, Then the available amount is ₹50,000.00 and only the third item (running total ₹55,000.00) is flagged as an error, with the amount over (₹5,000.00).
 - Given a claim total exactly equal to the available amount, Then no flag.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-05 — CATEGORY_NOT_ELIGIBLE [MUST] [agreed]
+### REQ-RULE-05 — CATEGORY_NOT_ELIGIBLE [MUST] [built]
 Error when the item's category is not eligible for the grant.
 Acceptance:
 - Given "Meals" marked not eligible, Then every Meals item gets an error flag naming the category; an item with another category or none does not.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-06 — MISSING_PROOF [MUST] [agreed]
+### REQ-RULE-06 — MISSING_PROOF [MUST] [built]
 Warn when the item's category `requiresProof` and the item has no attachment (any proof type counts; a pasted message is a proof).
 Acceptance:
 - Given a category that requires proof and an item with no attachment, Then a warn flag; with one attachment, Then none; given `requiresProof = false`, Then none.
@@ -64,13 +64,13 @@ Tests: tests/unit/rules.test.ts
 ### REQ-RULE-07 — DUPLICATE [SHOULD] [draft]
 Covered while adding expenses by REQ-CAP-07. Not part of M2.
 
-### REQ-RULE-08 — FOREIGN_CURRENCY_NO_RATE [MUST] [agreed]
+### REQ-RULE-08 — FOREIGN_CURRENCY_NO_RATE [MUST] [built]
 Error when an expense has a non-INR original currency, is still pending, and has no estimated rate. (The UI also prevents saving such an expense; the rule protects imported and backup data.)
 Acceptance:
 - Given EUR 89.00 with no `estimatedRateMicro` and status pending, Then an error flag; with a rate, Then none; once matched to a statement debit (confirmed), Then none because the statement amount is used.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-09 — Severity model and justification [MUST] [agreed]
+### REQ-RULE-09 — Severity model and justification [MUST] [built]
 `error` blocks submission until the item is fixed or removed; `warn` never blocks but appears in the pack and the reviewer view; `info` is advisory. The user may add a justification text to any flagged item; it appears next to the flag.
 Acceptance:
 - A justification (up to 500 characters) is saved with the expense and shown under its flags on the expense page and as a line on the row. It never clears a flag: it explains it.
@@ -81,7 +81,7 @@ Tests: tests/unit/rules.test.ts, tests/e2e/rules.smoke.test.ts
 ### REQ-RULE-10 — Thresholds come from grant config [SHOULD] [draft]
 Caps, eligibility, proof requirement and the date buffer are read from `grant.rules` on every evaluation (nothing is hard-coded). Not part of M2 beyond what the rules above already do.
 
-### REQ-RULE-11 — UNVERIFIED_AMOUNT [MUST] [agreed]
+### REQ-RULE-11 — UNVERIFIED_AMOUNT [MUST] [built]
 Error when a claim item is a bank-paid expense (domestic or foreign) with no matched statement debit: the authority accepts only the statement INR debit. Clears when the expense is matched (REQ-CSV-08) or removed from the claim.
 Acceptance:
 - Given a claim item with `inrStatus = 'pending'` and `paymentMode = 'bank'`, Then an `UNVERIFIED_AMOUNT` error flag is raised and submission is blocked (REQ-RULE-09).
@@ -90,13 +90,13 @@ Acceptance:
 - The flag exists in the engine and blocks submission, but the screens do not repeat it as a red chip on every row. They show the **verified percentage** (REQ-BAL-07) and keep unverified expenses together at the top of the trip's list; the full flag text is on the expense page. (Owner's decision: a trip full of untouched proofs must not look like a wall of red.)
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-12 — UNCATEGORISED [MUST] [agreed]
+### REQ-RULE-12 — UNCATEGORISED [MUST] [built]
 Error when an item has no category (REQ-CAP-14 only suggests, never decides).
 Acceptance:
 - Given an item with no category, Then an error flag asking for a category; with any category, Then none.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-13 — CASH_NOT_IN_STATEMENT [SHOULD] [agreed]
+### REQ-RULE-13 — CASH_NOT_IN_STATEMENT [SHOULD] [built]
 Warn on cash-paid items (no statement row exists). The user must add a justification, which is shown to the reviewer.
 Acceptance:
 - Given a cash item without a justification, Then a warn flag saying a justification is needed; with a justification, Then the flag stays (as information that it is cash) and its message includes "justified".

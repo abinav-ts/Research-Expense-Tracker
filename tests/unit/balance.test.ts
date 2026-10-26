@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { balanceLabel, balanceState, computeBalance, pendingText, remainingText } from '../../src/shared/balance.ts';
+import { balanceLabel, balanceState, computeBalance, pendingText, remainingText, verifiedShare } from '../../src/shared/balance.ts';
 
 const grant = { totalMinor: 10_000_000, utilisedBeforeMinor: 2_000_000 }; // ₹1,00,000 with ₹20,000 utilised before
 const exp = (inrMinor: number, extra: Partial<{ inrStatus: 'pending' | 'confirmed'; excluded: boolean }> = {}) => ({
@@ -89,5 +89,28 @@ describe('REQ-BAL-06: confirmed vs pending-verification split', () => {
     expect(pendingText(computeBalance(grant, [exp(620_000)]))).toBe('₹6,200.00 of spend is pending verification');
     expect(pendingText(computeBalance(grant, [exp(620_000, { inrStatus: 'confirmed' })]))).toBeUndefined();
     expect(pendingText(computeBalance(grant, [exp(620_000, { excluded: true })]))).toBeUndefined();
+  });
+});
+
+describe('REQ-BAL-07: verified share', () => {
+  const e = (inrMinor: number, extra: Partial<{ inrStatus: 'pending' | 'confirmed'; excluded: boolean; paymentMode: 'bank' | 'cash' }> = {}) => ({
+    inrMinor, inrStatus: 'confirmed' as const, excluded: false, paymentMode: 'bank' as const, ...extra,
+  });
+
+  it('REQ-BAL-07: ₹10,000 pending and ₹30,000 confirmed is 75% verified; all confirmed is 100%', () => {
+    expect(verifiedShare([e(1_000_000, { inrStatus: 'pending' }), e(3_000_000)])).toEqual({ verifiedMinor: 3_000_000, unverifiedMinor: 1_000_000, percent: 75 });
+    expect(verifiedShare([e(100), e(200)]).percent).toBe(100);
+  });
+
+  it('REQ-BAL-07: a pending ₹1.00 and a confirmed ₹3.00 is 75%; the percentage is rounded down so it never claims more than is true', () => {
+    expect(verifiedShare([e(100, { inrStatus: 'pending' }), e(300)]).percent).toBe(75);
+    expect(verifiedShare([e(1, { inrStatus: 'pending' }), e(999)]).percent).toBe(99);
+    expect(verifiedShare([e(1), e(2, { inrStatus: 'pending' })]).percent).toBe(33);
+  });
+
+  it('REQ-BAL-07: excluded and cash expenses are left out, and with nothing bank-paid there is no percentage', () => {
+    expect(verifiedShare([e(500, { inrStatus: 'pending', excluded: true }), e(500, { inrStatus: 'pending', paymentMode: 'cash' })]).percent).toBeUndefined();
+    expect(verifiedShare([]).percent).toBeUndefined();
+    expect(verifiedShare([e(100), e(900, { inrStatus: 'pending', paymentMode: 'cash' })]).percent).toBe(100);
   });
 });

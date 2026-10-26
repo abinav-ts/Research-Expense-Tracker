@@ -118,7 +118,7 @@ Acceptance:
 - Given no pending spend, Then the "pending verification" phrase is not shown.
 Tests: tests/unit/balance.test.ts
 
-### REQ-BAL-07 — Verified share and grouping [SHOULD] [agreed]
+### REQ-BAL-07 — Verified share and grouping [SHOULD] [built]
 The system shall show how much of the spend has been verified against the bank statement, as a percentage, and separate verified expenses from the rest.
 Acceptance:
 - **Percentage:** verified = the amount of confirmed expenses ÷ (confirmed + pending bank-paid expenses), by amount, rounded down, excluding excluded and cash expenses. Shown as "40% verified" with a small bar on each grant card (home), on the grant page and on the trip page. With no bank-paid spend it is not shown.

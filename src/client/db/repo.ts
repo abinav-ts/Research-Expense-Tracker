@@ -282,6 +282,16 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
         await rememberPayee(fields.payee, fields.categoryId, false);
       });
     },
+    /** REQ-RULE-09: why a flagged item is fine. Up to 500 characters; empty removes it. A justification explains a flag, it never clears it. */
+    async setJustification(id: string, text: string): Promise<void> {
+      const value = text.trim().replace(/\s+/g, ' ').slice(0, 500);
+      await write(async () => {
+        const existing = await db.expenses.get(id);
+        if (!existing) return;
+        const { justification: _old, ...rest } = existing;
+        await db.expenses.put({ ...rest, ...(value && { justification: value }), updatedAt: now() });
+      });
+    },
     async setExcluded(id: string, excluded: boolean): Promise<void> {
       await write(async () => void (await db.expenses.update(id, { excluded, updatedAt: now() })));
     },

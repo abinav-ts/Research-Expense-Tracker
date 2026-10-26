@@ -94,6 +94,16 @@ export interface Attachment {
   blobKey: string;
 }
 
+/** The only fields of a bank statement row that are ever kept or sent (SPEC §6, REQ-PRIV-02). */
+export interface StatementRef {
+  date: string;
+  narration: string;
+  debitMinor: number;
+  refNo?: string;
+  /** Fingerprint of the row, so the same row is never used twice. */
+  rowHash: string;
+}
+
 export interface Expense {
   id: string;
   tripId: string;
@@ -108,8 +118,12 @@ export interface Expense {
   inrStatus: 'pending' | 'confirmed';
   paymentMode: 'bank' | 'cash';
   estimatedRateMicro?: number;
+  /** Set when matched to a statement row: inrMinor is then the statement debit and inrStatus 'confirmed'. */
+  statementRef?: StatementRef;
   source: 'proof' | 'manual' | 'statement';
   attachments: Attachment[];
+  /** Why a flagged item is fine (REQ-RULE-09), up to 500 characters. */
+  justification?: string;
   excluded: boolean;
   createdAt: string;
   updatedAt: string;
@@ -138,4 +152,29 @@ export interface Flag {
   severity: 'info' | 'warn' | 'error';
   message: string;
   itemId: string;
+}
+
+/** One line of a claim (REQ-RULE-01). `amountMinor` is the statement debit when matched, otherwise the pending amount. */
+export interface ClaimItem {
+  id: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  originalMinor: number;
+  originalCurrency: string;
+  categoryId?: CategoryId;
+  reference?: string;
+  statementRef?: StatementRef;
+  attachmentIds: string[];
+  justification?: string;
+  paymentMode: 'bank' | 'cash';
+  inrStatus: 'pending' | 'confirmed';
+  estimatedRateMicro?: number;
+}
+
+export interface ClaimDraft {
+  grant: Grant;
+  trip: Trip;
+  items: ClaimItem[];
+  grantDocIds: string[];
 }

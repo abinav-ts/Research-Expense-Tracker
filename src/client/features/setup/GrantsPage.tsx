@@ -6,6 +6,7 @@ import { loadDemoData } from '../../demo/loadDemo.ts';
 import { attempt } from '../../lib/errors.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { BalanceIndicator } from '../balance/BalanceIndicator.tsx';
+import { VerifiedMeter } from '../balance/VerifiedMeter.tsx';
 import { useState } from 'react';
 
 export function GrantsPage() {
@@ -63,6 +64,7 @@ export function GrantsPage() {
                 {grant.sponsor && `${grant.sponsor} · `}{formatDateLabel(grant.startDate)} to {formatDateLabel(grant.endDate)} · {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
               </p>
               <BalanceIndicator grant={grant} expenses={expenses} />
+              <VerifiedMeter expenses={expenses} />
             </li>
           ))}
         </ul>

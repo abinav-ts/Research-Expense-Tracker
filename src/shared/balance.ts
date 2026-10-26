@@ -63,3 +63,19 @@ export function balanceLabel(b: Balance): string {
   const pending = pendingText(b);
   return `Grant balance: ${amount}, ${STATE_LABELS[b.state]}${pending ? `. ${pending}` : ''}`;
 }
+
+/**
+ * REQ-BAL-07: how much of the bank-paid spend has been checked against the statement. By amount, rounded down;
+ * excluded and cash expenses are left out (cash has no statement line). `percent` is undefined with nothing to verify.
+ */
+export function verifiedShare(expenses: Pick<Expense, 'inrMinor' | 'inrStatus' | 'excluded' | 'paymentMode'>[]): { verifiedMinor: number; unverifiedMinor: number; percent: number | undefined } {
+  let verifiedMinor = 0;
+  let unverifiedMinor = 0;
+  for (const e of expenses) {
+    if (e.excluded || e.paymentMode === 'cash') continue;
+    if (e.inrStatus === 'confirmed') verifiedMinor += e.inrMinor;
+    else unverifiedMinor += e.inrMinor;
+  }
+  const total = verifiedMinor + unverifiedMinor;
+  return { verifiedMinor, unverifiedMinor, percent: total > 0 ? Math.floor((verifiedMinor * 100) / total) : undefined };
+}
