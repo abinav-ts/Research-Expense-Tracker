@@ -68,7 +68,7 @@ test.describe('REQ-OFF-03: Share Target', () => {
     await postShare(page, { files: ['ok.png', 'notes.docx'] });
     await page.waitForURL('**/inbox?shared=1&skipped=1');
     await expect(page.getByTestId('inbox-item')).toHaveCount(1);
-    await expect(page.getByText('1 shared file was skipped: use PDF, JPG, PNG, WebP.')).toBeVisible();
+    await expect(page.getByText('1 shared file was skipped: use PDF, JPG, PNG, WebP, HEIC.')).toBeVisible();
   });
 
   test('REQ-CAP-03: where sharing is not supported the Inbox still offers picker and paste, with a one-line hint', async ({ page }) => {

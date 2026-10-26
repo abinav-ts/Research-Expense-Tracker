@@ -6,6 +6,7 @@ import { Messages } from '../../components/Messages.tsx';
 import { btn, h2 } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { attempt } from '../../lib/errors.ts';
+import { convertHeicFiles } from '../../lib/heic.ts';
 
 /** REQ-SET-07: files are stored, listed, opened and removed. Nothing is read or recognised. */
 export function GrantDocuments({ grantId, docs }: { grantId: string; docs: GrantDocument[] }) {
@@ -24,12 +25,16 @@ export function GrantDocuments({ grantId, docs }: { grantId: string; docs: Grant
       <p className="mb-3 text-sm text-ink-soft">Sanction letter, budget sheet and so on. They are only stored on this device ({ACCEPTED_TYPES_TEXT}); ExpRes never reads them.</p>
       <input
         ref={input} id="grant-doc-input" type="file" multiple hidden aria-label="Add grant documents"
-        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
         onChange={async (e) => {
           const files = [...(e.target.files ?? [])];
           e.target.value = '';
           if (!files.length) return;
-          await attempt(async () => setMessages((await repo.addGrantDocuments(grantId, files)).messages));
+          await attempt(async () => {
+            const converted = await convertHeicFiles(files);
+            const result = converted.files.length ? await repo.addGrantDocuments(grantId, converted.files) : { added: 0, messages: [] };
+            setMessages([...converted.messages, ...result.messages]);
+          });
         }}
       />
       <button type="button" className={btn} onClick={() => input.current?.click()}>Add documents</button>

@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "test": "node scripts/check-brand.ts && vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:safari": "ALL_WEBKIT=1 playwright test --project=webkit",
     "trace": "node scripts/trace.ts",
     "typecheck": "wrangler types && tsc -p tsconfig.client.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.node.json",
     "types": "wrangler types",

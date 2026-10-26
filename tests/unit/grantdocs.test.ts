@@ -18,7 +18,7 @@ describe('REQ-SET-07: grant documents (store only)', () => {
   it('REQ-SET-07: rejects .docx with a message listing the accepted types', () => {
     const r = checkFile(f('budget.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'));
     expect(r).toEqual({ ok: false, message: `"budget.docx" was skipped: use ${ACCEPTED_TYPES_TEXT}.` });
-    expect(ACCEPTED_TYPES_TEXT).toBe('PDF, JPG, PNG, WebP');
+    expect(ACCEPTED_TYPES_TEXT).toBe('PDF, JPG, PNG, WebP, HEIC');
   });
 
   it('REQ-SET-07: a file over 1 MB is accepted but marked over the claim limit', () => {

@@ -23,7 +23,8 @@ The system shall let the user select or capture one or more images or PDFs (scre
 Acceptance:
 - Given 3 images selected at once, Then 3 Inbox items appear (thumbnails, in selection order) and the nav badge shows 3.
 - On a phone the picker offers camera capture as well as the gallery and files.
-- Given an unsupported type (e.g. .docx, .heic where unsupported), Then it is skipped with a message listing accepted types; valid files in the same selection are still added.
+- iPhone photos (HEIC/HEIF) are accepted: where the browser can open them (Safari on iPhone, iPad and Mac) each is converted to a JPEG as it is added (named .jpg, orientation applied, GPS and camera metadata dropped), so everything stored and shown later is an ordinary JPEG. Where the browser cannot open HEIC (for example Chrome), the photo is skipped with a message saying so and suggesting Safari or sharing as JPEG; other files in the same selection are still added.
+- Given an unsupported type (e.g. .docx), Then it is skipped with a message listing accepted types (PDF, JPG, PNG, WebP, HEIC); valid files in the same selection are still added.
 - Given a PDF larger than 1 MB, Then it is accepted into the Inbox with the note "Too large to include in a claim (max 1 MB)" shown until replaced.
 - Given the picker is cancelled, Then nothing changes.
 Tests: tests/unit/import.test.ts, tests/e2e/capture.smoke.test.ts
@@ -95,7 +96,7 @@ Tests: tests/unit/image.test.ts (runs with a canvas implementation in the test e
 All data survives reload, browser restart and offline periods (IndexedDB).
 Acceptance:
 - Given grants, trips, expenses, Inbox items, grant documents, payee-category memory and CSV column mappings, When the page is reloaded, the browser is restarted, or the device goes offline, Then all of it is present.
-- Image and PDF files are stored as Blobs in IndexedDB (not base64 in localStorage).
+- Image and PDF files are stored as Blobs in IndexedDB (not base64 in localStorage). In a browser that cannot keep a Blob in IndexedDB (found in WebKit's test browser; Safari has done this in some modes) the same file is kept as bytes plus its type and returned as an identical Blob when read; the user notices no difference.
 - The database is versioned with migrations, so a newer app version opens older data without loss.
 - If a write fails (e.g. storage quota), the user sees an error message; nothing fails silently.
 Tests: tests/unit/db.test.ts (fake-indexeddb), tests/e2e/capture.smoke.test.ts

@@ -23,6 +23,7 @@ npm run dev          # starts the app at http://localhost:5173 (stop with Ctrl+C
 | `npm run dev` | App + API with live reload. No service worker in dev. |
 | `npm test` | Brand checks, then unit and API tests. |
 | `npm run test:e2e` | Browser smoke tests (Playwright). First time: `npx playwright install chromium`. Builds the app itself. |
+| `npm run test:e2e:safari` | The same browser tests on WebKit, the engine of Safari on iPhone (first time: `npx playwright install webkit`). |
 | `npm run trace` | Checks spec → test traceability (see REQ-NFR-06). `npm run trace -- --strict` is the final gate. |
 | `npm run typecheck` | TypeScript check of client, server and tooling. |
 | `npm run build` | Production build into `dist/`. |

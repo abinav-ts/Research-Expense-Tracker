@@ -167,7 +167,7 @@ test.describe('REQ-SET-07: grant documents', () => {
   test('REQ-SET-07: a .docx is rejected with a message listing the accepted types', async ({ page }) => {
     await createGrant(page);
     await page.locator('#grant-doc-input').setInputFiles({ name: 'budget.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from('x') });
-    await expect(page.getByRole('status').filter({ hasText: 'use PDF, JPG, PNG, WebP' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'use PDF, JPG, PNG, WebP, HEIC' })).toBeVisible();
     await expect(page.getByTestId('grant-doc')).toHaveCount(0);
   });
 

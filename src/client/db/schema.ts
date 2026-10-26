@@ -4,9 +4,15 @@ import { payeeKey } from '../../shared/categoriser.ts';
 import type { Anchor } from '../../shared/learn.ts';
 import type { CategoryId, Expense, Grant, GrantDocument, InboxItem, Trip } from '../../shared/types.ts';
 
+/**
+ * A stored file. Normally a Blob; in browsers that cannot keep Blobs in IndexedDB (some Safari modes) the same file is
+ * kept as bytes plus its type, and turned back into a Blob when read (REQ-CAP-11).
+ */
 export interface BlobRow {
   id: string;
-  blob: Blob;
+  blob?: Blob;
+  bytes?: ArrayBuffer;
+  type?: string;
 }
 export interface PayeeCategoryRow {
   payeeKey: string;

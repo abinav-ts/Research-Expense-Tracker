@@ -159,7 +159,7 @@ describe('REQ-SET-07: grant documents', () => {
     const grant = await repo.createGrant(grantFields);
     const r = await repo.addGrantDocuments(grant.id, [file('a.pdf', 'application/pdf'), file('b.jpg', 'image/jpeg'), file('c.docx', 'application/msword')]);
     expect(r.added).toBe(2);
-    expect(r.messages).toEqual(['"c.docx" was skipped: use PDF, JPG, PNG, WebP.']);
+    expect(r.messages).toEqual(['"c.docx" was skipped: use PDF, JPG, PNG, WebP, HEIC.']);
     const docs = await db.grantDocs.toArray();
     expect(docs.map((d) => d.name).sort()).toEqual(['a.pdf', 'b.jpg']);
     await repo.removeGrantDocument(docs[0]!.id);
@@ -342,5 +342,52 @@ describe('REQ-CAP-11: opening older data with a newer app version', () => {
     expect(await db.expenses.count()).toBe(3);
     const payees = (await db.payees.toArray()).sort((a, b) => b.count - a.count);
     expect(payees.map((p) => [p.key, p.count])).toEqual([['sample book house', 2], ['other shop', 1]]);
+  });
+});
+
+describe('REQ-CAP-11: browsers that cannot keep a Blob in IndexedDB', () => {
+  const bytesRepo = () => {
+    const db = new ExpResDb(`bytes-${++counter}`);
+    opened.push(db);
+    return { db, repo: createRepo(db, { blobStorage: 'bytes' }) };
+  };
+
+  it('REQ-CAP-11: grant documents, Inbox files, Inbox text and expense proofs are kept as bytes and come back as the same file', async () => {
+    const { db, repo } = bytesRepo();
+    const grant = await repo.createGrant(grantFields);
+    const trip = await repo.createTrip(grant.id, tripFields);
+    await repo.addGrantDocuments(grant.id, [file('s.pdf', 'application/pdf', 'PDF-BYTES')]);
+    await repo.addInboxFiles([file('p.png', 'image/png', 'PNG-BYTES')]);
+    const text = await repo.addInboxText('INR 100.00 spent at CAFE on 01-Nov-26');
+    const e = await repo.addExpenseWithProofs(trip.id, expenseFields(), [{ file: file('n.txt', 'text/plain', 'NOTE'), proofType: 'other' }]);
+
+    const rows = await db.blobs.toArray();
+    expect(rows.length).toBe(3);
+    for (const row of rows) {
+      expect(row.blob).toBeUndefined();
+      expect(row.bytes).toBeInstanceOf(ArrayBuffer);
+    }
+    const [doc] = await db.grantDocs.toArray();
+    const blob = (await repo.getBlob(doc!.blobKey))!;
+    expect(blob.type).toBe('application/pdf');
+    expect(await blob.text()).toBe('PDF-BYTES');
+    expect(await (await repo.getBlob(e.attachments[0]!.blobKey))!.text()).toBe('NOTE');
+
+    // confirming a text item stores its text proof inside a transaction: it must still work
+    const confirmed = await repo.confirmInboxItem(text.id, trip.id, expenseFields({ payee: 'CAFE' }));
+    expect(await (await repo.getBlob(confirmed.attachments[0]!.blobKey))!.text()).toContain('CAFE');
+    const [fileItem] = await db.inbox.toArray();
+    const moved = await repo.confirmInboxItem(fileItem!.id, trip.id, expenseFields({ payee: 'P' }));
+    expect(await (await repo.getBlob(moved.attachments[0]!.blobKey))!.text()).toBe('PNG-BYTES');
+    expect((await repo.getBlob(moved.attachments[0]!.blobKey))!.type).toBe('image/png');
+  });
+
+  it('REQ-CAP-11: removing a file stored as bytes removes it', async () => {
+    const { db, repo } = bytesRepo();
+    const grant = await repo.createGrant(grantFields);
+    await repo.addGrantDocuments(grant.id, [file('s.pdf', 'application/pdf')]);
+    const [doc] = await db.grantDocs.toArray();
+    await repo.removeGrantDocument(doc!.id);
+    expect(await db.blobs.count()).toBe(0);
   });
 });

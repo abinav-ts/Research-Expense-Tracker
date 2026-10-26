@@ -66,7 +66,7 @@ The system shall let the user attach files (PDF/images, e.g. sanction letter, bu
 Acceptance:
 - Given a grant, When the user adds a PDF and a JPG, Then both are listed with name, type and size, open after reload and offline, and can be removed (with confirmation).
 - Given a file over 1 MB after compression (images) or over 1 MB (PDFs), Then it is stored locally but marked "Too large to include in a claim (max 1 MB)" and cannot be toggled into the pack (REQ-SET-08).
-- Given an unsupported type (e.g. .docx), Then it is rejected with a message listing accepted types (PDF, JPG, PNG, WebP).
+- Given an unsupported type (e.g. .docx), Then it is rejected with a message listing accepted types (PDF, JPG, PNG, WebP, HEIC). HEIC photos from an iPhone are converted to JPEG on import, as in REQ-CAP-02.
 - No OCR or text extraction runs on grant documents.
 Tests: tests/unit/grantdocs.test.ts
 

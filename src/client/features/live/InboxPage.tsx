@@ -9,13 +9,14 @@ import { btn, btnPrimary, card, h1, linkClass } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
+import { convertHeicFiles } from '../../lib/heic.ts';
 import { formatReceivedAt } from '../../lib/today.ts';
 import { ensureOcrAssets } from '../../ocr/assets.ts';
 import { OcrStatus } from '../../ocr/OcrStatus.tsx';
 import { useLive } from '../../lib/useLive.ts';
 import { ProofThumb } from './ProofView.tsx';
 
-const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf';
+const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*,application/pdf,image/heic,image/heif';
 
 /** REQ-CAP-02, -04, -13: add proofs (files, camera, pasted text) and review unconfirmed ones. */
 export function InboxPage() {
@@ -33,7 +34,11 @@ export function InboxPage() {
   async function addFiles(list: FileList | null) {
     const picked = [...(list ?? [])];
     if (!picked.length) return; // picker cancelled: nothing changes
-    await attempt(async () => setMessages((await repo.addInboxFiles(picked)).messages));
+    await attempt(async () => {
+      const converted = await convertHeicFiles(picked); // iPhone photos become JPEG here
+      const result = converted.files.length ? await repo.addInboxFiles(converted.files) : { added: 0, messages: [] };
+      setMessages([...converted.messages, ...result.messages]);
+    });
   }
 
   return (

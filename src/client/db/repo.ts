@@ -9,7 +9,7 @@ import type { GrantFields } from '../../shared/grant.ts';
 import type { TripFields } from '../../shared/trip.ts';
 import type { Attachment, CategoryId, Expense, Grant, GrantDocument, InboxItem, ProofType, Trip } from '../../shared/types.ts';
 import { sha256Hex } from '../lib/hash.ts';
-import type { ExpResDb } from './schema.ts';
+import type { BlobRow, ExpResDb } from './schema.ts';
 
 export class StorageError extends Error {
   constructor(message = 'Could not save to this device. Free up space or try again; your last change was not saved.') {
@@ -21,6 +21,39 @@ export class StorageError extends Error {
 export interface RepoOptions {
   newId?: () => string;
   now?: () => string;
+  /** 'auto' (default) uses Blobs when this browser can store them; 'bytes' always stores bytes (for tests). */
+  blobStorage?: 'auto' | 'bytes';
+}
+
+/** Can this browser keep a Blob in IndexedDB? Asked once; Safari in some modes says no. */
+let blobSupport: Promise<boolean> | undefined;
+function browserStoresBlobs(): Promise<boolean> {
+  blobSupport ??= (async () => {
+    const name = 'expres-blob-probe';
+    try {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const open = indexedDB.open(name, 1);
+        open.onupgradeneeded = () => open.result.createObjectStore('b');
+        open.onsuccess = () => resolve(open.result);
+        open.onerror = () => reject(open.error);
+      });
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction('b', 'readwrite');
+          tx.objectStore('b').put(new Blob(['x']), 'k');
+          tx.oncomplete = () => resolve();
+          tx.onerror = tx.onabort = () => reject(tx.error);
+        });
+        return true;
+      } finally {
+        db.close();
+        indexedDB.deleteDatabase(name);
+      }
+    } catch {
+      return false;
+    }
+  })();
+  return blobSupport;
 }
 export interface DeletionImpact {
   trips: number;
@@ -55,9 +88,17 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
   }
   const allTables = [db.grants, db.trips, db.expenses, db.grantDocs, db.inbox, db.blobs, db.payeeCategories, db.meta, db.payees, db.anchors];
 
-  async function putBlob(blob: Blob): Promise<string> {
+  /**
+   * Decides how a file is stored. Call this BEFORE opening a database transaction: reading a file's bytes is not
+   * database work, and a transaction would close while waiting for it.
+   */
+  async function blobPayload(blob: Blob): Promise<Pick<BlobRow, 'blob' | 'bytes' | 'type'>> {
+    if (options.blobStorage !== 'bytes' && (await browserStoresBlobs())) return { blob };
+    return { bytes: await blob.arrayBuffer(), type: blob.type };
+  }
+  async function putBlob(payload: Pick<BlobRow, 'blob' | 'bytes' | 'type'>): Promise<string> {
     const id = newId();
-    await db.blobs.put({ id, blob });
+    await db.blobs.put({ id, ...payload });
     return id;
   }
 
@@ -144,8 +185,9 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
           continue;
         }
         const sha256 = await sha256Hex(file);
+        const payload = await blobPayload(file);
         await write(async () => {
-          const blobKey = await putBlob(file);
+          const blobKey = await putBlob(payload);
           const doc: GrantDocument = { id: newId(), grantId, name: file.name, mime: check.mime, sizeBytes: file.size, sha256, blobKey, includeInPack: !check.overLimit };
           await db.grantDocs.add(doc);
         });
@@ -214,12 +256,13 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
     /** Adds an expense together with proof files (used by demo data and later by supporting documents). */
     async addExpenseWithProofs(tripId: string, fields: ExpenseFields, proofs: { file: File; proofType: ProofType }[], source: Expense['source'] = 'proof'): Promise<Expense> {
       const hashes = await Promise.all(proofs.map((p) => sha256Hex(p.file)));
+      const payloads = await Promise.all(proofs.map((p) => blobPayload(p.file)));
       let created!: Expense;
       await write(() =>
         db.transaction('rw', allTables, async () => {
           const attachments: Attachment[] = [];
           for (const [i, p] of proofs.entries()) {
-            attachments.push({ id: newId(), kind: 'proof', proofType: p.proofType, mime: p.file.type, name: p.file.name, sizeBytes: p.file.size, sha256: hashes[i]!, blobKey: await putBlob(p.file) });
+            attachments.push({ id: newId(), kind: 'proof', proofType: p.proofType, mime: p.file.type, name: p.file.name, sizeBytes: p.file.size, sha256: hashes[i]!, blobKey: await putBlob(payloads[i]!) });
           }
           const stamp = now();
           created = { id: newId(), tripId, ...fields, inrStatus: 'pending', source, attachments, excluded: false, createdAt: stamp, updatedAt: stamp };
@@ -253,7 +296,8 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
       });
     },
     async getBlob(key: string): Promise<Blob | undefined> {
-      return (await db.blobs.get(key))?.blob;
+      const row = await db.blobs.get(key);
+      return row?.blob ?? (row?.bytes ? new Blob([row.bytes], { type: row.type ?? '' }) : undefined);
     },
 
     // ---- Inbox (REQ-CAP-02, -04, -13) ----
@@ -268,8 +312,9 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
         const sha256 = await sha256Hex(file);
         // Over-limit images are shrunk later (REQ-CAP-10); only PDFs are flagged now (REQ-CAP-02).
         const tooLarge = check.isPdf && check.overLimit;
+        const payload = await blobPayload(file);
         await write(async () => {
-          const blobKey = await putBlob(file);
+          const blobKey = await putBlob(payload);
           const item: InboxItem = { id: newId(), kind: 'file', receivedAt: now(), blobKey, name: file.name, mime: check.mime, sizeBytes: file.size, sha256, tooLarge };
           await db.inbox.add(item);
         });
@@ -306,6 +351,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
       // Hash before opening the transaction: IndexedDB transactions close if we await non-IndexedDB work inside.
       const textBlob = item.kind === 'text' ? new Blob([item.text ?? ''], { type: 'text/plain' }) : undefined;
       const textHash = textBlob ? await sha256Hex(textBlob) : '';
+      const textPayload = textBlob ? await blobPayload(textBlob) : undefined;
 
       let created!: Expense;
       await write(() =>
@@ -314,7 +360,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
           if (item.kind === 'file' && item.blobKey) {
             attachment = { id: newId(), kind: 'proof', proofType, mime: item.mime ?? 'application/octet-stream', name: item.name ?? 'proof', sizeBytes: item.sizeBytes ?? 0, sha256: item.sha256 ?? '', blobKey: item.blobKey };
           } else {
-            attachment = { id: newId(), kind: 'proof', proofType, mime: 'text/plain', name: 'message.txt', sizeBytes: textBlob!.size, sha256: textHash, blobKey: await putBlob(textBlob!) };
+            attachment = { id: newId(), kind: 'proof', proofType, mime: 'text/plain', name: 'message.txt', sizeBytes: textBlob!.size, sha256: textHash, blobKey: await putBlob(textPayload!) };
           }
           const stamp = now();
           created = { id: newId(), tripId, ...fields, inrStatus: 'pending', source: 'proof', attachments: [attachment], excluded: false, createdAt: stamp, updatedAt: stamp };

@@ -29,7 +29,7 @@ test.describe('REQ-CAP-02: import files', () => {
     await page.goto('/inbox');
     await page.getByLabel('Choose proof files').setInputFiles([pngFile('ok.png'), { name: 'notes.docx', mimeType: 'application/msword', buffer: Buffer.from('x') }]);
     await expect(page.getByTestId('inbox-item')).toHaveCount(1);
-    await expect(page.getByText('"notes.docx" was skipped: use PDF, JPG, PNG, WebP.')).toBeVisible();
+    await expect(page.getByText('"notes.docx" was skipped: use PDF, JPG, PNG, WebP, HEIC.')).toBeVisible();
   });
 
   test('REQ-CAP-02: a PDF over 1 MB is accepted with the "Too large to include in a claim" note', async ({ page }) => {
@@ -154,6 +154,7 @@ test.describe('REQ-CAP-15: suggested values for each field', () => {
     await expect(page.getByTestId('text-assigner')).toHaveCount(0);
     // each suggestion chip is a button at least 44 px tall
     const chip = page.getByTestId('suggest-date').getByRole('button').first();
+    await expect(chip).toBeVisible();
     expect((await chip.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   });
 
