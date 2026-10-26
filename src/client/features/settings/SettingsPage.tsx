@@ -5,6 +5,7 @@ import { repo } from '../../db/index.ts';
 import { attempt } from '../../lib/errors.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { OcrStatus } from '../../ocr/OcrStatus.tsx';
+import { PayeeList } from './PayeeList.tsx';
 
 /** Removes the saved copy of the app (service workers and their caches) and reloads. Data in IndexedDB and the recognition data stay. */
 async function refreshAppFiles(): Promise<void> {
@@ -26,6 +27,8 @@ export function SettingsPage() {
   return (
     <div>
       <h1 className={`${h1} mb-6`}>Settings</h1>
+
+      <PayeeList />
 
       <section className={`${card} mb-6`} aria-labelledby="learned-heading">
         <h2 id="learned-heading" className={`${h2} mb-2`}>What ExpRes has learned</h2>

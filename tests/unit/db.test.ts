@@ -391,3 +391,59 @@ describe('REQ-CAP-11: browsers that cannot keep a Blob in IndexedDB', () => {
     expect(await db.blobs.count()).toBe(0);
   });
 });
+
+describe('REQ-CAP-17: the payee list', () => {
+  async function withPayees() {
+    const f = fresh();
+    const grant = await f.repo.createGrant(grantFields);
+    const trip = await f.repo.createTrip(grant.id, tripFields);
+    await f.repo.addExpense(trip.id, expenseFields({ payee: 'Blossom Bock House', categoryId: 'other' }));
+    await f.repo.addExpense(trip.id, expenseFields({ payee: 'Cafe Sample', categoryId: 'meals' }));
+    return { ...f, trip };
+  }
+
+  it('REQ-CAP-17: lists every remembered payee A to Z with its remembered category', async () => {
+    const { repo } = await withPayees();
+    const list = await repo.listPayees();
+    expect(list.map((p) => [p.name, p.categoryId])).toEqual([['Blossom Bock House', 'other'], ['Cafe Sample', 'meals']]);
+  });
+
+  it('REQ-CAP-17: renaming corrects the remembered spelling and carries the category over, leaving saved expenses alone', async () => {
+    const { db, repo } = await withPayees();
+    await repo.renamePayee('blossom bock house', 'Blossom Book House');
+    expect((await repo.listPayees()).map((p) => p.name)).toEqual(['Blossom Book House', 'Cafe Sample']);
+    expect((await repo.payeeMemory()).get('blossom book house')).toBe('other');
+    expect((await repo.payeeMemory()).has('blossom bock house')).toBe(false);
+    expect(await repo.knownPayees()).toContain('Blossom Book House');
+    expect((await db.expenses.toArray()).map((e) => e.payee).sort()).toEqual(['Blossom Bock House', 'Cafe Sample']); // saved expenses unchanged
+  });
+
+  it('REQ-CAP-17: renaming to a payee that already exists merges them and adds their counts', async () => {
+    const { repo, trip } = await withPayees();
+    await repo.addExpense(trip.id, expenseFields({ payee: 'Cafe Sample' }));
+    await repo.renamePayee('blossom bock house', 'cafe  sample');
+    const list = await repo.listPayees();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ name: 'cafe sample', count: 3, categoryId: 'meals' }); // the existing payee's category wins
+  });
+
+  it('REQ-CAP-17: changing only the capitals or spacing keeps the same entry', async () => {
+    const { repo } = await withPayees();
+    await repo.renamePayee('cafe sample', 'CAFE SAMPLE');
+    expect((await repo.listPayees()).map((p) => p.name)).toEqual(['Blossom Bock House', 'CAFE SAMPLE']);
+  });
+
+  it('REQ-CAP-17: an empty name is refused and nothing changes', async () => {
+    const { repo } = await withPayees();
+    await expect(repo.renamePayee('cafe sample', '  .. ')).rejects.toThrow(/name/);
+    expect(await repo.listPayees()).toHaveLength(2);
+  });
+
+  it('REQ-CAP-17: removing forgets the spelling and category of that one payee only', async () => {
+    const { db, repo } = await withPayees();
+    await repo.removePayee('blossom bock house');
+    expect((await repo.listPayees()).map((p) => p.name)).toEqual(['Cafe Sample']);
+    expect((await repo.payeeMemory()).has('blossom bock house')).toBe(false);
+    expect(await db.expenses.count()).toBe(2);
+  });
+});

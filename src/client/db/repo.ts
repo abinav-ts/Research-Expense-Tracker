@@ -382,6 +382,48 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
     async knownPayees(): Promise<string[]> {
       return (await db.payees.orderBy('count').reverse().limit(300).toArray()).map((p) => p.name);
     },
+    /** Every remembered payee with its remembered category, A to Z (REQ-CAP-17). */
+    async listPayees(): Promise<{ key: string; name: string; count: number; categoryId?: CategoryId }[]> {
+      const [payees, categories] = await Promise.all([db.payees.toArray(), db.payeeCategories.toArray()]);
+      const byKey = new Map(categories.map((c) => [c.payeeKey, c.categoryId]));
+      return payees
+        .map((p) => ({ key: p.key, name: p.name, count: p.count, ...(byKey.has(p.key) && { categoryId: byKey.get(p.key)! }) }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    },
+    /**
+     * Corrects what ExpRes remembers about a payee: the spelling it suggests, with its remembered category. If the new
+     * spelling is already remembered the two are merged. Saved expenses are not changed.
+     */
+    async renamePayee(key: string, newName: string): Promise<void> {
+      const name = newName.trim().replace(/\s+/g, ' ');
+      const newKey = payeeKey(name);
+      if (!newKey) throw new StorageError('Enter a name for this payee.');
+      await write(() =>
+        db.transaction('rw', [db.payees, db.payeeCategories], async () => {
+          const old = await db.payees.get(key);
+          if (!old) return;
+          const target = newKey === key ? undefined : await db.payees.get(newKey);
+          await db.payees.put({ key: newKey, name, count: (target?.count ?? 0) + old.count, updatedAt: now() });
+          if (newKey !== key) {
+            await db.payees.delete(key);
+            const category = await db.payeeCategories.get(key);
+            if (category) {
+              await db.payeeCategories.delete(key);
+              if (!(await db.payeeCategories.get(newKey))) await db.payeeCategories.put({ ...category, payeeKey: newKey });
+            }
+          }
+        }),
+      );
+    },
+    /** Forgets one payee (spelling and category). Saved expenses are not changed. */
+    async removePayee(key: string): Promise<void> {
+      await write(() =>
+        db.transaction('rw', [db.payees, db.payeeCategories], async () => {
+          await db.payees.delete(key);
+          await db.payeeCategories.delete(key);
+        }),
+      );
+    },
     async anchors(): Promise<Anchor[]> {
       return db.anchors.toArray();
     },

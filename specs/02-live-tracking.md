@@ -69,10 +69,11 @@ Acceptance:
 - Empty trip: a message explains how to add the first expense.
 Tests: tests/e2e/expense-list.smoke.test.ts, tests/unit/grouping.test.ts
 
-### REQ-CAP-07 — Duplicate detection [SHOULD] [agreed]
+### REQ-CAP-07 — Duplicate detection [SHOULD] [built]
 Acceptance:
-- On confirm, a warning "Looks like a duplicate of <payee ₹amount date>" appears when the trip already has an expense with (a) the same non-empty reference, or (b) the same amount, date and payee (case-insensitive), or (c) a proof with the same SHA-256.
-- The warning is non-blocking: the user can Save anyway or Discard.
+- On save or confirm, a warning "Looks like a duplicate of <payee ₹amount date> (<why>)" appears when any expense of the same grant (all its trips, since one invoice claimed under two trips is still claimed twice) has (a) the same non-empty reference, or (b) the same amount, currency, date and payee (ignoring case and punctuation), or (c) a proof with the same SHA-256. A pasted or shared message counts as a proof: it is fingerprinted by its text.
+- The warning is non-blocking and appears before anything is saved: the user can Save anyway, or Discard (in the Inbox this asks for the usual confirmation; when adding by hand it leaves without saving). When editing a saved expense the second button reads "Keep editing" and an expense is never compared with itself. Changing any field clears the warning. An expense that is excluded from the claim still counts, and the warning says it is excluded.
+- The warning is amber with an icon and words (never colour alone).
 Tests: tests/unit/duplicates.test.ts
 
 ### REQ-CAP-08 — Supporting documents [SHOULD] [agreed]
@@ -151,6 +152,17 @@ Acceptance:
 - **Control:** Settings shows how many payee spellings and message formats are remembered and has a "Forget what ExpRes has learned" button, with confirmation. Forgetting does not touch expenses. The memory will be part of the backup (REQ-CAP-12).
 - Learning never changes a saved expense and never fills a field without the "Check" mark.
 Tests: tests/unit/learn.test.ts, tests/unit/db.test.ts, tests/e2e/learning.smoke.test.ts
+
+### REQ-CAP-17 — Payee autocomplete and payee list [SHOULD] [built]
+The system shall offer payees the user has saved before while typing in a payee field, and list them in Settings so a wrong spelling can be corrected or removed.
+Acceptance:
+- The payee field offers every remembered payee (the browser's own suggestion list, so it also works on a phone keyboard).
+- Settings → Payees lists each remembered payee A to Z with its remembered category and how many times it was saved.
+- **Rename** corrects the remembered spelling and moves the remembered category with it. If the new name is already remembered the two are merged (counts added; the existing category wins). An empty name is refused with a message. Changing only capitals or spacing keeps the same entry.
+- **Remove** asks for confirmation and forgets that one payee's spelling and category.
+- Neither action changes a saved expense: the list is about what ExpRes suggests, and a typo that was saved on an expense is corrected by editing that expense.
+- Rows keep a readable name and 44 px buttons at 360 px wide.
+Tests: tests/unit/db.test.ts, tests/e2e/payees.smoke.test.ts
 
 ## Open questions
 - Which UPI/bank apps and card-alert SMS formats matter most (D-3)? (Not blocking: the demo uses synthetic fixtures.)

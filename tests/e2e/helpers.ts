@@ -48,7 +48,7 @@ export async function addExpense(page: Page, e: ExpenseInput) {
   await page.getByLabel('Paid to (payee)').fill(e.payee);
   if (e.category) await page.getByLabel('Category').selectOption(e.category);
   await page.getByRole('button', { name: 'Save expense' }).click();
-  await expect(page.getByTestId('expense-row').filter({ hasText: e.payee })).toBeVisible();
+  await expect(page.getByTestId('expense-row').filter({ hasText: e.payee }).first()).toBeVisible();
 }
 
 export const remaining = (page: Page) => page.getByTestId('balance-remaining').first();

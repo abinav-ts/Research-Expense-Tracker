@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { suggestCategory } from '../../../shared/categoriser.ts';
 import { COMMON_CURRENCIES, currencyExponent } from '../../../shared/currency.ts';
+import { duplicateMessage, findDuplicates, type DuplicateMatch } from '../../../shared/duplicates.ts';
 import { validateExpenseForm, type ExpenseFields, type ExpenseFormInput } from '../../../shared/expense-form.ts';
 import { formatInr, fxToInrMinor, parseAmount } from '../../../shared/money.ts';
 import { dateWindowFlag } from '../../../shared/rules/date-window.ts';
 import type { FieldSuggestions, SuggestField, Suggestion } from '../../../shared/suggest.ts';
 import { microToText, parseRateMicro } from '../../../shared/trip.ts';
-import { CATEGORY_IDS, CATEGORY_LABELS, type CategoryId } from '../../../shared/types.ts';
+import { CATEGORY_IDS, CATEGORY_LABELS, type CategoryId, type Expense } from '../../../shared/types.ts';
 import { SelectField, TextAreaField, TextField } from '../../components/fields.tsx';
-import { btnPrimary } from '../../components/ui.ts';
+import { btn, btnPrimary } from '../../components/ui.ts';
 import { todayLocal } from '../../lib/today.ts';
 
 interface Props {
@@ -27,6 +28,15 @@ interface Props {
    */
   suggestions?: FieldSuggestions | undefined;
   suggestionsKey?: string | undefined;
+  /** Payee spellings saved before, offered while typing (REQ-CAP-17). */
+  knownPayees?: string[] | undefined;
+  /** The grant's saved expenses and this expense's proofs, for the duplicate warning (REQ-CAP-07). */
+  existing?: Expense[] | undefined;
+  proofHashes?: string[] | undefined;
+  /** Set when editing a saved expense, so it is not compared with itself. */
+  editingId?: string | undefined;
+  /** What "Discard" does in the duplicate warning. Without it the button is "Keep editing". */
+  onDiscard?: (() => void) | undefined;
   /** Rendered above the fields (e.g. the trip and proof-type pickers in the Inbox). */
   top?: ReactNode;
   /** Rendered next to the submit button. */
@@ -38,15 +48,17 @@ const blank = (): ExpenseFormInput => ({
 });
 
 /** REQ-CAP-01 form, shared by manual add, expense detail and the Inbox confirm screen. */
-export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggestionsKey, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
+export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggestionsKey, knownPayees, existing, proofHashes, editingId, onDiscard, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
   const [form, setForm] = useState<ExpenseFormInput>({ ...blank(), ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormInput, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
   const categoryTouched = useRef(!!initial?.categoryId);
   const [checks, setChecks] = useState<ReadonlySet<keyof ExpenseFormInput>>(new Set());
   const touched = useRef(new Set<keyof ExpenseFormInput>());
   const set = <K extends keyof ExpenseFormInput>(key: K) => (value: ExpenseFormInput[K]) => {
     touched.current.add(key);
+    setDuplicates([]);
     setChecks((c) => (c.has(key) ? new Set([...c].filter((k) => k !== key)) : c));
     setForm((f) => ({ ...f, [key]: value }));
   };
@@ -63,6 +75,7 @@ export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggesti
   const applySuggestion = (suggestion: Suggestion, byUser: boolean) => {
     const keys = Object.keys(suggestion.patch) as (keyof ExpenseFormInput)[];
     setForm((f) => ({ ...f, ...suggestion.patch }));
+    setDuplicates([]);
     if (byUser) keys.forEach((k) => touched.current.add(k));
     setChecks((c) => new Set(byUser ? [...c].filter((k) => !keys.includes(k)) : [...c, ...keys]));
     setErrors({});
@@ -117,10 +130,20 @@ export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggesti
   const typedRate = parseRateMicro(form.rateText);
   const estimateMinor = typedAmount.ok && typedRate.ok ? fxToInrMinor(typedAmount.value, typedRate.value, exponent) : undefined;
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  /** Saves, unless this looks like a duplicate the user has not yet said is fine (`force`: they did). */
+  async function save(force: boolean) {
     if (!preview.ok) return setErrors(preview.errors);
     setErrors({});
+    const matches = findDuplicates(
+      {
+        ...(editingId && { id: editingId }),
+        payee: preview.value.payee, date: preview.value.date, originalMinor: preview.value.originalMinor,
+        originalCurrency: preview.value.originalCurrency, ...(preview.value.reference && { reference: preview.value.reference }),
+        proofHashes: proofHashes ?? [],
+      },
+      existing ?? [],
+    );
+    if (matches.length > 0 && !force) return setDuplicates(matches); // warn first; saving is still the user's call
     setSaving(true);
     try {
       await onSubmit(preview.value);
@@ -128,6 +151,10 @@ export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggesti
       setSaving(false);
     }
   }
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void save(false);
+  };
 
   return (
     <form onSubmit={submit} noValidate>
@@ -148,7 +175,8 @@ export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggesti
       {chips('date')}
       {windowFlag && <p role="status" className="-mt-2 mb-4 text-sm font-semibold text-state-low" data-testid="date-window-warning">⚠ {windowFlag.message} You can still save.</p>}
       {futureDate && <p role="status" className="-mt-2 mb-4 text-sm font-semibold text-state-low">⚠ This date is in the future. You can still save.</p>}
-      <TextField id="payee" check={checks.has('payee')} label="Paid to (payee)" value={form.payee} onChange={set('payee')} error={errors.payee} maxLength={200} />
+      <TextField id="payee" check={checks.has('payee')} label="Paid to (payee)" value={form.payee} onChange={set('payee')} error={errors.payee} maxLength={200} list="known-payees" />
+      <datalist id="known-payees">{(knownPayees ?? []).map((name) => <option key={name} value={name} />)}</datalist>
       {chips('payee')}
 
       <SelectField
@@ -178,6 +206,17 @@ export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggesti
       {chips('reference')}
       <TextAreaField id="note" label="Note (optional)" value={form.note} onChange={set('note')} rows={2} />
 
+      {duplicates.length > 0 && (
+        <div role="alert" className="mb-4 rounded-lg border-2 border-state-low bg-surface p-3" data-testid="duplicate-warning">
+          <ul className="mb-3 grid gap-1 font-semibold text-state-low">
+            {duplicates.map((m) => <li key={m.expense.id}>⚠ {duplicateMessage(m)}</li>)}
+          </ul>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className={btnPrimary} onClick={() => void save(true)} disabled={saving}>Save anyway</button>
+            <button type="button" className={btn} onClick={() => (onDiscard ? onDiscard() : setDuplicates([]))}>{onDiscard ? 'Discard' : 'Keep editing'}</button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap gap-3">
         <button type="submit" className={btnPrimary} disabled={saving}>{submitLabel}</button>
         {actions}

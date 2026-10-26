@@ -243,6 +243,7 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-CAP-13 | Paste or share SMS/notification text → parse (no OCR needed) | M | 02 |
 | REQ-CAP-14 | Category suggestion from merchant, learned per payee; user confirms | M | 02 |
 | REQ-CAP-15 | Up to three suggested values per field from recognised text, one tap to apply | M | 02 |
+| REQ-CAP-17 | Payee autocomplete and a payee list in Settings (rename, remove) | S | 02 |
 | REQ-CAP-16 | Learn payee spellings and message formats from confirmed expenses | S | 02 |
 | REQ-CSV-01 | Upload and parse CSV in-browser | M | 03 |
 | REQ-CSV-02 | Column mapping and date format | M | 03 |
@@ -401,6 +402,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-26 v0.4.12 — REQ-CAP-07 (duplicate warning) built, widened from "the trip" to "the grant" and to pasted messages; new REQ-CAP-17 (payee autocomplete and a payee list in Settings with rename and remove), built. Both prompted by the owner adding the same invoice twice with no warning, and by a misspelt payee that would otherwise be suggested for ever.
 - 2026-10-26 v0.4.11 — Reproduced the owner's stuck phone and laptop: a device that held release A and received B (updates wait for a tap) stayed on A for ever, because A's page has no update bar. Service workers now ask open pages whether they can offer an update and take over at once when none can; verified by simulating A→B, A→C and A→B→C against real builds. Settings shows the build and has "Refresh app files". One extra reload is still needed to leave the stuck state.
 - 2026-10-26 v0.4.10 — Two defects found on the owner's devices. (1) Inbox rows put the thumbnail, text, a 176 px dropdown and a link on one line, so on a phone the text got 0 px width and printed one letter per line: the text now has its own row above the controls. (2) After a release the desktop kept showing the old version until a second reload, because the service worker swapped versions silently: REQ-OFF-06 is built, so a bar says "New version available" and the new version is applied only when the user taps Reload. A one-time double reload is still needed to move off the old behaviour.
 - 2026-10-26 v0.4.9 — iPhone (HEIC) photos are accepted and converted to JPEG on import where the browser can open them (REQ-CAP-02, REQ-SET-07); elsewhere they are skipped with a clear message. Trying it on WebKit, the engine of Safari on iOS, showed that some browsers cannot keep a Blob in IndexedDB, so files are then kept as bytes (REQ-CAP-11). The browser suite now also runs on WebKit (`npm run test:e2e:safari`); 109 of 110 tests passed on first run.

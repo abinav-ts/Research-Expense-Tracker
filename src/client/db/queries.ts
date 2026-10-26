@@ -12,6 +12,9 @@ async function expensesOfGrant(grantId: string): Promise<{ trips: Trip[]; expens
 }
 
 export const queries = {
+  /** Every expense of every trip of a grant (REQ-CAP-07 compares against these). */
+  grantExpenses: async (grantId: string): Promise<Expense[]> => (await expensesOfGrant(grantId)).expenses,
+
   async grantsOverview(): Promise<{ grant: Grant; tripCount: number; expenses: Expense[] }[]> {
     const grants = await db.grants.orderBy('updatedAt').reverse().toArray();
     return Promise.all(

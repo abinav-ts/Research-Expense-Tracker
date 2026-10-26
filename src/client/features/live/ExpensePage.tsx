@@ -17,7 +17,10 @@ import { ProofView } from './ProofView.tsx';
 export function ExpensePage() {
   const { expenseId = '' } = useParams();
   const navigate = useNavigate();
-  const data = useLive(async () => ({ detail: await queries.expenseDetail(expenseId), memory: await repo.payeeMemory() }), [expenseId]);
+  const data = useLive(async () => {
+    const detail = await queries.expenseDetail(expenseId);
+    return { detail, memory: await repo.payeeMemory(), knownPayees: await repo.knownPayees(), existing: detail ? await queries.grantExpenses(detail.grant.id) : [] };
+  }, [expenseId]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (!data) return <p role="status">Loading…</p>;
@@ -43,7 +46,8 @@ export function ExpensePage() {
 
       <ExpenseFormFields
         key={expense.updatedAt}
-        tripRates={trip.fxRatesMicro} tripWindow={{ trip, bufferDays }} memory={data.memory} submitLabel="Save changes"
+        tripRates={trip.fxRatesMicro} tripWindow={{ trip, bufferDays }} memory={data.memory} knownPayees={data.knownPayees}
+        existing={data.existing} editingId={expense.id} proofHashes={expense.attachments.map((a) => a.sha256)} submitLabel="Save changes"
         initial={{
           amountText: minorToText(expense.originalMinor, exponent), currency: expense.originalCurrency,
           rateText: expense.estimatedRateMicro ? microToText(expense.estimatedRateMicro) : '', date: expense.date, payee: expense.payee,

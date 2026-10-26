@@ -8,11 +8,12 @@ import { PROOF_TYPE_LABELS, type InboxItem, type ProofType } from '../../../shar
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
 import { SelectField } from '../../components/fields.tsx';
 import { btn, btnDanger, h1 } from '../../components/ui.ts';
-import { repo } from '../../db/index.ts';
+import { db, repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
 import { todayLocal } from '../../lib/today.ts';
 import { useLive } from '../../lib/useLive.ts';
+import { sha256Hex } from '../../lib/hash.ts';
 import { ensureOcrAssets, getOcrAssetState } from '../../ocr/assets.ts';
 import { OcrStatus } from '../../ocr/OcrStatus.tsx';
 import { prepareForOcr } from '../../ocr/prepare.ts';
@@ -118,8 +119,14 @@ function Confirm({ item, next, text }: { item: InboxItem; next?: string | undefi
   const navigate = useNavigate();
   const choices = useLive(async () => ({
     trips: await queries.tripChoices(), last: await repo.lastTripId(), memory: await repo.payeeMemory(),
-    knownPayees: await repo.knownPayees(), anchors: await repo.anchors(),
+    knownPayees: await repo.knownPayees(), anchors: await repo.anchors(), expenses: await db.expenses.toArray(),
   }));
+  // A pasted message is compared with saved ones by the fingerprint of its text, as a file is by its own.
+  const [textHash, setTextHash] = useState<string>();
+  useEffect(() => {
+    if (item.kind !== 'text') return;
+    void sha256Hex(new Blob([item.text ?? ''], { type: 'text/plain' })).then(setTextHash);
+  }, [item.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [tripId, setTripId] = useState<string>();
   const [discarding, setDiscarding] = useState(false);
   if (!choices) return <p role="status">Loading…</p>;
@@ -132,6 +139,8 @@ function Confirm({ item, next, text }: { item: InboxItem; next?: string | undefi
   const inWindow = choices.trips.find((c) => c.trip.startDate <= today && today <= c.trip.endDate);
   const chosen = choices.trips.find((c) => c.trip.id === tripId) ?? inWindow ?? choices.trips.find((c) => c.trip.id === choices.last) ?? choices.trips[0]!;
   const bufferDays = normaliseRules(chosen.grant.rules).travelBufferDays;
+  const tripsOfGrant = new Set(choices.trips.filter((c) => c.grant.id === chosen.grant.id).map((c) => c.trip.id));
+  const existing = choices.expenses.filter((e) => tripsOfGrant.has(e.tripId));
 
   // Up to three suggestions per field (REQ-CAP-15); dates inside this trip's dates rank first. The user always confirms.
   const suggestions = text
@@ -142,7 +151,8 @@ function Confirm({ item, next, text }: { item: InboxItem; next?: string | undefi
   return (
     <>
       <ExpenseFormFields
-        key={item.id} suggestions={suggestions} suggestionsKey={`${item.id}:${text?.length ?? 0}`} tripRates={chosen.trip.fxRatesMicro}
+        key={item.id} knownPayees={choices.knownPayees} existing={existing} proofHashes={[item.kind === 'file' ? (item.sha256 ?? '') : (textHash ?? '')]}
+        onDiscard={() => setDiscarding(true)} suggestions={suggestions} suggestionsKey={`${item.id}:${text?.length ?? 0}`} tripRates={chosen.trip.fxRatesMicro}
         tripWindow={{ trip: chosen.trip, bufferDays }} memory={choices.memory} submitLabel="Confirm expense"
         top={
           <>

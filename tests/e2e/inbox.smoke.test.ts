@@ -176,6 +176,7 @@ test.describe('REQ-CAP-15: suggested values for each field', () => {
     await expect(page.getByTestId('assigner-words')).toHaveCount(0);
     await expect(page.getByTestId('text-assigner')).toHaveCount(0);
     // each suggestion chip is a button at least 44 px tall
+    await expect(page.getByLabel('Date')).toHaveValue('2026-11-12'); // the best date has been prefilled, so the chips below it are settled
     const chip = page.getByTestId('suggest-date').getByRole('button').first();
     await expect(chip).toBeVisible();
     expect((await chip.boundingBox())!.height).toBeGreaterThanOrEqual(44);
