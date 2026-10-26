@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { loadDemoAndOpenTrip, remaining } from './helpers.ts';
 
 test.describe('REQ-CAP-06: expense list', () => {
-  test('REQ-CAP-06: expenses are grouped by day (newest first) with day totals, category, status and proof thumbnails', async ({ page }) => {
+  test('REQ-CAP-06, REQ-DEMO-02: the demo data gives a trip whose expenses are grouped by day (newest first) with day totals, category, status and proof thumbnails', async ({ page }) => {
     await loadDemoAndOpenTrip(page);
     const days = page.getByTestId('day-group');
     await expect(days).toHaveCount(4);

@@ -319,7 +319,7 @@ test.describe('REQ-CSV-04, REQ-CSV-05: adding other debits', () => {
 });
 
 test.describe('REQ-CSV-10: the sample statement', () => {
-  test('REQ-CSV-10: "Download a sample statement" gives the file in fixtures/', async ({ page }) => {
+  test('REQ-CSV-10, REQ-DEMO-04: "Download a sample statement" gives the file in fixtures/', async ({ page }) => {
     await loadDemoAndOpenTrip(page);
     await page.getByRole('link', { name: 'Match bank statement' }).click();
     const download = page.waitForEvent('download');
