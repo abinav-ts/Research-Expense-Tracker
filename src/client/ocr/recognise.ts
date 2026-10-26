@@ -23,6 +23,17 @@ function getWorker(): Promise<TesseractWorker> {
   return worker;
 }
 
+/** Stops a stuck worker (e.g. a browser that silently hangs) so the next try starts clean. */
+export async function resetRecogniser(): Promise<void> {
+  const old = worker;
+  worker = undefined;
+  try {
+    await (await old)?.terminate();
+  } catch {
+    // already gone
+  }
+}
+
 /**
  * Reads the text in an image. `layout`: 'auto' finds blocks and columns; 'sparse' finds scattered lines, which suits
  * receipts and screenshots where 'auto' loses lines. Rejects if recognition cannot run.

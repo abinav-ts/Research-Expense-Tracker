@@ -104,6 +104,48 @@ test.describe('REQ-CAP-05: OCR prefill for screenshots', () => {
   });
 });
 
+test.describe('REQ-CAP-05: when reading does not work', () => {
+  test.use({ serviceWorkers: 'block' }); // requests made by a service worker cannot be intercepted, so run without one
+  test('REQ-CAP-05: the warning is red, says why, and "Try again" reads the screenshot once the problem is gone', async ({ page }) => {
+    await page.route('**/ocr/lang/**', (route) => route.abort()); // the recognition data cannot be downloaded
+    await setup(page);
+    await page.getByLabel('Choose proof files').setInputFiles(fixture('upi-success.png'));
+    await openFirstInboxItem(page);
+
+    const warning = page.getByTestId('ocr-note');
+    await expect(warning).toHaveAttribute('data-phase', 'unavailable', { timeout: 30_000 });
+    await expect(warning).toHaveAttribute('role', 'alert');
+    await expect(warning).toHaveClass(/text-state-over/);
+    await expect(warning).toHaveClass(/border-state-over/);
+    await expect(page.getByTestId('ocr-reason')).toContainText('Reason:');
+    // red is the brand "overspent" colour, taken from the tokens: compare the real computed colours
+    const colours = await page.evaluate(() => ({
+      warning: getComputedStyle(document.querySelector('[data-testid="ocr-note"]')!).color,
+      token: (() => { const e = document.createElement('i'); e.style.color = 'var(--ex-state-over)'; document.body.appendChild(e); const c = getComputedStyle(e).color; e.remove(); return c; })(),
+    }));
+    expect(colours.warning).toBe(colours.token);
+    await expect(page.getByTestId('ocr-status')).toHaveClass(/text-state-over/); // the status line above it is red too
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('');
+
+    await page.unroute('**/ocr/lang/**');
+    await page.getByRole('button', { name: 'Try again' }).click();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('1200', { timeout: 60_000 });
+    await expect(page.getByTestId('ocr-note')).toHaveAttribute('data-phase', 'done');
+    await expect(page.getByTestId('ocr-note')).not.toHaveClass(/text-state-over/); // success is not red
+  });
+
+  test('REQ-CAP-05: an image with no payment details gets a red warning with the reason, never a silent empty form', async ({ page }) => {
+    await setup(page);
+    await page.getByLabel('Choose proof files').setInputFiles(pngFile('blank.png'));
+    await openFirstInboxItem(page);
+    const warning = page.getByTestId('ocr-note');
+    await expect(warning).toHaveAttribute('data-phase', /nothing-found|failed/, { timeout: 60_000 });
+    await expect(warning).toHaveClass(/text-state-over/);
+    await expect(page.getByTestId('ocr-reason')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  });
+});
+
 test.describe('REQ-CAP-05: a photographed receipt', () => {
   test('REQ-CAP-05, REQ-CAP-15: a shadowed, tilted, grainy receipt photo still gives shop, total, date and invoice number, with "What was read" closed', async ({ page }) => {
     await setup(page); // trip 10–14 Nov 2026; the receipt is dated 22 Aug 2026

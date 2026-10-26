@@ -50,7 +50,7 @@ Tests: tests/e2e/inbox.smoke.test.ts
 The system shall run on-device OCR on an inbox image and prefill amount, date, payee, reference where found. Fields are always user-confirmed; failure leaves the form empty and never blocks.
 Acceptance:
 - Given the demo UPI-style screenshot (REQ-DEMO-05), Then amount, date, payee and reference are prefilled correctly.
-- Given an unreadable image, Then the form stays empty and the expense can still be saved.
+- Given an unreadable image, or recognition that cannot run, Then the form stays empty and the expense can still be saved, and a red warning (text, ⚠ icon and the brand's red, never colour alone) says what happened, gives the reason (for example "the recognition data could not be downloaded"), and offers "Try again". A read that has not finished after two minutes is stopped and reported the same way.
 - OCR runs in a Web Worker so the page stays responsive; a "Reading screenshot…" indicator is shown and can be dismissed; the demo fixture finishes in ≤ 10 s on a desktop browser.
 - Prefilled fields are visibly marked "check" until the user edits or confirms them.
 - OCR runs on the original-resolution image; the stored copy is the compressed one (REQ-CAP-10). The raw OCR text is kept only in memory while the form is open.

@@ -12,5 +12,14 @@ export function OcrStatus() {
     : s.status === 'missing-offline' ? 'Recognition data is not downloaded yet. Connect once to get it; pasting text still works.'
     : s.status === 'error' ? `Recognition data could not be downloaded (${s.message}). Pasting text still works.`
     : '';
-  return text ? <p role="status" className="mb-3 text-sm text-ink-soft" data-testid="ocr-status" data-state={s.status}>{text}</p> : null;
+  if (!text) return null;
+  const problem = s.status === 'missing-offline' || s.status === 'error';
+  return (
+    <p
+      role={problem ? 'alert' : 'status'} data-testid="ocr-status" data-state={s.status}
+      className={`mb-3 text-sm ${problem ? 'font-semibold text-state-over' : 'text-ink-soft'}`}
+    >
+      {problem && '⚠ '}{text}
+    </p>
+  );
 }

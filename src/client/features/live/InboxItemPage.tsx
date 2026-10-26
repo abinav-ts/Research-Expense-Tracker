@@ -16,52 +16,64 @@ import { useLive } from '../../lib/useLive.ts';
 import { ensureOcrAssets, getOcrAssetState } from '../../ocr/assets.ts';
 import { OcrStatus } from '../../ocr/OcrStatus.tsx';
 import { prepareForOcr } from '../../ocr/prepare.ts';
-import { recogniseImage } from '../../ocr/recognise.ts';
+import { recogniseImage, resetRecogniser } from '../../ocr/recognise.ts';
 import { ExpenseFormFields } from './ExpenseFormFields.tsx';
 import { ProofView } from './ProofView.tsx';
 
 type Phase = 'reading' | 'done' | 'nothing-found' | 'failed' | 'unavailable' | 'dismissed';
 
+const TIME_LIMIT_MS = 120_000;
+const withTimeLimit = <T,>(work: Promise<T>): Promise<T> =>
+  Promise.race([work, new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('it took longer than 2 minutes')), TIME_LIMIT_MS))]);
+
 /**
  * REQ-CAP-05: read an image on this device. The image is made easier to read first; if the first pass finds no amount
  * or no date, a second pass with a different layout mode is added. The text lives only in this tab's memory, with card
- * digits and balances scrubbed. Nothing here can block saving: failure just leaves the form empty.
+ * digits and balances scrubbed. Nothing here can block saving. When reading does not work the screen says so in red,
+ * gives the reason, and offers "Try again".
  */
 function Recognition({ item, onText }: { item: InboxItem; onText: (text: string) => void }) {
   const [phase, setPhase] = useState<Phase>('reading');
+  const [reason, setReason] = useState('');
+  const [attempts, setAttempts] = useState(0);
   const dismissed = useRef(false);
   useEffect(() => {
     let cancelled = false;
+    setPhase('reading');
     void (async () => {
       try {
         await ensureOcrAssets();
-        if (getOcrAssetState().status !== 'ready') return void (!cancelled && setPhase('unavailable'));
+        const assets = getOcrAssetState();
+        if (assets.status !== 'ready') {
+          setReason(assets.status === 'error' ? assets.message : assets.status === 'missing-offline' ? 'there is no connection and the recognition data is not on this device yet' : 'the recognition data is not ready');
+          return void (!cancelled && setPhase('unavailable'));
+        }
         const blob = await repo.getBlob(item.blobKey!);
-        if (!blob) throw new Error('file missing');
-        const prepared = await prepareForOcr(blob);
-        let text = scrubReceiptText(await recogniseImage(prepared, 'auto'));
-        const first = suggestFields(text);
-        if (!first.amount.length || !first.date.length) text += '\n' + scrubReceiptText(await recogniseImage(prepared, 'sparse'));
+        if (!blob) throw new Error('the file is missing from this device');
+        const text = await withTimeLimit((async () => {
+          const prepared = await prepareForOcr(blob);
+          let read = scrubReceiptText(await recogniseImage(prepared, 'auto'));
+          const first = suggestFields(read);
+          if (!first.amount.length || !first.date.length) read += '\n' + scrubReceiptText(await recogniseImage(prepared, 'sparse'));
+          return read;
+        })());
         if (cancelled || dismissed.current) return;
         onText(text);
         const found = Object.values(suggestFields(text)).some((list) => list.length > 0);
+        setReason(`${text.replace(/\s/g, '').length} characters were read, but no amount, date or payee among them`);
         setPhase(found ? 'done' : 'nothing-found');
       } catch (error) {
         console.error(error);
-        if (!cancelled) setPhase('failed');
+        await resetRecogniser();
+        if (cancelled) return;
+        setReason(error instanceof Error && error.message ? error.message : 'unknown error');
+        setPhase('failed');
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id]);
+  }, [item.id, attempts]);
 
-  const note: Record<Phase, string> = {
-    reading: '', dismissed: '',
-    done: 'Details read from the screenshot are marked "Check", with other options under each field. Please confirm each one.',
-    'nothing-found': 'Could not find payment details in this image. Please type them in.',
-    failed: 'Reading the screenshot failed. Type the details in; you can still save.',
-    unavailable: 'Reading screenshots needs a one-time download of recognition data. Type the details in for now.',
-  };
   if (phase === 'reading') {
     return (
       <p role="status" className="mb-3 flex flex-wrap items-center gap-3 font-semibold" data-testid="ocr-reading">
@@ -70,7 +82,22 @@ function Recognition({ item, onText }: { item: InboxItem; onText: (text: string)
       </p>
     );
   }
-  return note[phase] ? <p role="status" className="mb-3 text-sm text-ink-soft" data-testid="ocr-note" data-phase={phase}>{note[phase]}</p> : null;
+  if (phase === 'dismissed') return null;
+  if (phase === 'done') {
+    return <p role="status" className="mb-3 text-sm text-ink-soft" data-testid="ocr-note" data-phase="done">Details read from the screenshot are marked "Check", with other options under each field. Please confirm each one.</p>;
+  }
+  const headline: Record<'nothing-found' | 'failed' | 'unavailable', string> = {
+    'nothing-found': 'Could not find payment details in this image. Please type them in.',
+    failed: 'Reading the screenshot failed. Please type the details in; you can still save.',
+    unavailable: 'Could not read the screenshot: the recognition data is not available. Please type the details in for now.',
+  };
+  return (
+    <div role="alert" className="mb-3 rounded-lg border-2 border-state-over bg-surface p-3 text-state-over" data-testid="ocr-note" data-phase={phase}>
+      <p className="font-semibold">⚠ {headline[phase]}</p>
+      <p className="mt-1 text-sm" data-testid="ocr-reason">Reason: {reason}</p>
+      <button type="button" className={`${btn} mt-2`} onClick={() => { dismissed.current = false; setAttempts((n) => n + 1); }}>Try again</button>
+    </div>
+  );
 }
 
 /** The raw recognised text, closed by default: it is only for checking or sharing, never for picking words from. */
