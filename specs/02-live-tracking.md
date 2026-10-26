@@ -128,19 +128,28 @@ Acceptance:
 - Given no category chosen, Then the expense cannot be claimed (REQ-RULE-12).
 Tests: tests/unit/categoriser.test.ts
 
-### REQ-CAP-15 — Tap to assign text to a field [MUST] [built]
-The system shall show the text of an Inbox item (pasted or shared SMS now; text read from a screenshot by REQ-CAP-05) as tappable words, and let the user assign any selection to Amount, Date, Payee or Reference. This is the guarantee for bank formats the parser does not recognise: the parser only prefills, and a few taps always complete the form.
+### REQ-CAP-15 — Suggested values for each field [MUST] [built]
+The system shall offer, under each of Amount, Date, Payee and Reference, up to three suggested values taken from the recognised or pasted text, best first, and let the user apply one with a single tap. The best suggestion is prefilled and marked "Check". It never shows the whole recognised text as a list of words to pick from: a real invoice can read as hundreds of words, and the user's job must stay no bigger than copying details from a paper invoice. (This replaces the earlier tap-the-words design, which was removed after trying it on a real receipt photo.)
 Acceptance:
-- Given the text "Alert 2399 INR XYZ MART 25/10/26 thanks", where the parser finds no amount or payee, When the user taps "XYZ" and "MART" and chooses Payee, Then the Payee field is "XYZ MART" and the selection clears.
-- Selecting "2399" and choosing Amount sets the amount to 2399; selecting "Rs.2,399.00" or "INR 2399" also sets the currency; selecting a date such as "25OCT26" and choosing Date sets 2026-10-25.
-- Given a selection that cannot be read as the chosen field (for example "hello" as Amount or Date), Then a message says so and the form is unchanged.
-- Words are tappable buttons with a pressed state, at least 44 px tall (REQ-NFR-01), usable by keyboard; the four assign buttons are disabled until something is selected; Clear empties the selection.
-- Text that was scrubbed (card digits, balances) is not shown, so it cannot be assigned (REQ-CAP-13).
-- Assigning never saves anything: the user still confirms the expense.
-Tests: tests/unit/assign.test.ts, tests/e2e/inbox.smoke.test.ts
+- **Date:** every date found, with real month names matched approximately ("22-hugust-2026" reads as 22 Aug 2026) and look-alike characters repaired (O→0, l→1, and a day such as "72" offers 12 and 22). Dates inside the trip window (REQ-RULE-02) come first, then dates near the word "date". Each chip shows the date and the words it was found next to.
+- **Amount:** numbers with two decimals or a currency marker. A number on a line with "total", "amount", "paid" or "payable" ranks first; numbers on lines with "tax", "GST", "discount" or "rate" rank last; a value that appears on several lines ranks higher. Given an invoice whose lines show 560.00 four times and one garbled "60.00", Then 560.00 is the first suggestion.
+- **Payee:** (1) a payee the user has confirmed before that closely matches a line of the text, shown with the user's own spelling and labelled "Used before" (REQ-CAP-16); (2) the merchant after "at", "@", "paid to"; (3) the first name-like lines of the text. Lines that are addresses, phone numbers, web addresses or words like INVOICE, TAX, BILL are never suggested.
+- **Reference:** the value after "Invoice no", "Bill no", "Receipt no", "Txn", "Ref", "UTR", "UPI transaction ID".
+- A chip equal to the current field value is not shown. Nothing plausible found means no chips and an empty field; the user types.
+- Chips are buttons at least 44 px tall. The page never needs scrolling to see the suggestions of a field next to that field. The raw text sits in a collapsed "What was read" section with a Copy button, closed by default.
+- Applying a chip counts as the user's edit: the "Check" mark on that field goes away. Nothing is saved until the user confirms the expense.
+- Card digits, available limits and balances are scrubbed from the text before any suggestion is made (REQ-CAP-13).
+Tests: tests/unit/suggest.test.ts, tests/unit/dates.test.ts, tests/e2e/ocr.smoke.test.ts, tests/e2e/inbox.smoke.test.ts
 
-### REQ-CAP-16 — Learn from corrections [SHOULD] [agreed]
-After the user confirms an expense made from text, the system shall remember the words that surrounded each confirmed value (for example "spent@ ⟨payee⟩ on", "Ref ⟨reference⟩") and use them first on the next message in the same format. Only anchor words are stored, never amounts, merchants, dates or references; the memory stays on the device, can be cleared in Settings and is part of the backup (REQ-CAP-12). Acceptance criteria to be written when this is scheduled (after M1b).
+### REQ-CAP-16 — Learn from corrections [SHOULD] [built]
+The system shall remember what the user confirmed so that the same vendor or message format needs fewer corrections next time. All of it stays on the device.
+Acceptance:
+- **Spelling memory.** When an expense is saved, its payee name is remembered (alongside the existing payee → category memory). When a later recognised text has a line that closely matches a remembered payee (at least 80 % similar after ignoring case and punctuation), the remembered spelling is the first Payee suggestion, labelled "Used before". Given the user once saved "Blossom Book House" and OCR now reads "Blossom Bock Rouse", Then "Blossom Book House" is suggested first.
+- **Format memory.** When an expense is confirmed from a text (pasted SMS, or text read from an image) that contains the confirmed payee, reference, amount or date exactly once, the system stores for that field the up to two words before it and the one word after it. Given the next text has the same words around its payee, Then that payee is suggested first, even when the generic rules cannot read the format. Given the user's SMS "Rs 2399 spent@ SHOP ONE on 25OCT26" is confirmed, Then a later "Rs 150 spent@ OTHER CAFE on 01NOV26" reads payee OTHER CAFE.
+- **Never stored:** amounts, dates, reference numbers, message bodies or images are not kept for learning. Payee names are kept (they are already kept for categories).
+- **Control:** Settings shows how many payee spellings and message formats are remembered and has a "Forget what ExpRes has learned" button, with confirmation. Forgetting does not touch expenses. The memory will be part of the backup (REQ-CAP-12).
+- Learning never changes a saved expense and never fills a field without the "Check" mark.
+Tests: tests/unit/learn.test.ts, tests/unit/db.test.ts, tests/e2e/learning.smoke.test.ts
 
 ## Open questions
 - Which UPI/bank apps and card-alert SMS formats matter most (D-3)? (Not blocking: the demo uses synthetic fixtures.)

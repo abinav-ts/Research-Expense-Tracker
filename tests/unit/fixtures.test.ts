@@ -16,6 +16,13 @@ describe('REQ-DEMO-05: demo fixtures', () => {
     }
   });
 
+  it('REQ-DEMO-05: the degraded receipt photo exists as a real JPEG under the claim file limit', () => {
+    const bytes = readFileSync(join(dir, 'receipt-photo.jpg'));
+    expect(bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))).toBe(true);
+    expect(bytes.length).toBeGreaterThan(20_000);
+    expect(bytes.length).toBeLessThan(1_000_000);
+  });
+
   it('REQ-DEMO-05: the card-alert SMS text is recognised: ₹2,450.00, 12 Nov 2026, HOTEL SAMPLE, and its card digits and limit are dropped', () => {
     const raw = readFileSync(join(dir, 'card-alert-sms.txt'), 'utf8');
     const scrubbed = scrubReceiptText(raw);

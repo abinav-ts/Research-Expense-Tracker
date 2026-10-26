@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { normaliseRules } from '../../../shared/grant.ts';
-import type { ExpenseFormInput } from '../../../shared/expense-form.ts';
-import { formValuesFromReceipt } from '../../../shared/receipt-form.ts';
-import { parseReceiptText, scrubReceiptText } from '../../../shared/receipt-parser.ts';
+import { scrubReceiptText } from '../../../shared/receipt-parser.ts';
+import { allowedWindow } from '../../../shared/rules/date-window.ts';
+import { suggestFields } from '../../../shared/suggest.ts';
 import { PROOF_TYPE_LABELS, type InboxItem, type ProofType } from '../../../shared/types.ts';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
 import { SelectField } from '../../components/fields.tsx';
@@ -15,18 +15,19 @@ import { todayLocal } from '../../lib/today.ts';
 import { useLive } from '../../lib/useLive.ts';
 import { ensureOcrAssets, getOcrAssetState } from '../../ocr/assets.ts';
 import { OcrStatus } from '../../ocr/OcrStatus.tsx';
+import { prepareForOcr } from '../../ocr/prepare.ts';
 import { recogniseImage } from '../../ocr/recognise.ts';
-import { ExpenseFormFields, type FormPatch } from './ExpenseFormFields.tsx';
+import { ExpenseFormFields } from './ExpenseFormFields.tsx';
 import { ProofView } from './ProofView.tsx';
-import { TextAssigner } from './TextAssigner.tsx';
 
 type Phase = 'reading' | 'done' | 'nothing-found' | 'failed' | 'unavailable' | 'dismissed';
 
 /**
- * REQ-CAP-05: read an image on this device, then prefill the form. The raw text lives only in this component's
- * memory; card digits and balances are scrubbed first. Nothing here can block saving: failure just leaves the form empty.
+ * REQ-CAP-05: read an image on this device. The image is made easier to read first; if the first pass finds no amount
+ * or no date, a second pass with a different layout mode is added. The text lives only in this tab's memory, with card
+ * digits and balances scrubbed. Nothing here can block saving: failure just leaves the form empty.
  */
-function Recognition({ item, onText }: { item: InboxItem; onText: (text: string, values: Partial<ExpenseFormInput>) => void }) {
+function Recognition({ item, onText }: { item: InboxItem; onText: (text: string) => void }) {
   const [phase, setPhase] = useState<Phase>('reading');
   const dismissed = useRef(false);
   useEffect(() => {
@@ -37,11 +38,14 @@ function Recognition({ item, onText }: { item: InboxItem; onText: (text: string,
         if (getOcrAssetState().status !== 'ready') return void (!cancelled && setPhase('unavailable'));
         const blob = await repo.getBlob(item.blobKey!);
         if (!blob) throw new Error('file missing');
-        const text = scrubReceiptText(await recogniseImage(blob));
+        const prepared = await prepareForOcr(blob);
+        let text = scrubReceiptText(await recogniseImage(prepared, 'auto'));
+        const first = suggestFields(text);
+        if (!first.amount.length || !first.date.length) text += '\n' + scrubReceiptText(await recogniseImage(prepared, 'sparse'));
         if (cancelled || dismissed.current) return;
-        const values = formValuesFromReceipt(parseReceiptText(text));
-        onText(text, values);
-        setPhase(Object.keys(values).length ? 'done' : 'nothing-found');
+        onText(text);
+        const found = Object.values(suggestFields(text)).some((list) => list.length > 0);
+        setPhase(found ? 'done' : 'nothing-found');
       } catch (error) {
         console.error(error);
         if (!cancelled) setPhase('failed');
@@ -53,8 +57,8 @@ function Recognition({ item, onText }: { item: InboxItem; onText: (text: string,
 
   const note: Record<Phase, string> = {
     reading: '', dismissed: '',
-    done: 'Details read from the screenshot are marked "Check". Please confirm each one.',
-    'nothing-found': 'Could not find payment details in this image. Type them in, or tap words below if any were read.',
+    done: 'Details read from the screenshot are marked "Check", with other options under each field. Please confirm each one.',
+    'nothing-found': 'Could not find payment details in this image. Please type them in.',
     failed: 'Reading the screenshot failed. Type the details in; you can still save.',
     unavailable: 'Reading screenshots needs a one-time download of recognition data. Type the details in for now.',
   };
@@ -69,9 +73,26 @@ function Recognition({ item, onText }: { item: InboxItem; onText: (text: string,
   return note[phase] ? <p role="status" className="mb-3 text-sm text-ink-soft" data-testid="ocr-note" data-phase={phase}>{note[phase]}</p> : null;
 }
 
-function Confirm({ item, next, patch }: { item: InboxItem; next?: string | undefined; patch: FormPatch | undefined }) {
+/** The raw recognised text, closed by default: it is only for checking or sharing, never for picking words from. */
+function WhatWasRead({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <details className="mb-4 rounded-lg border border-line bg-surface p-3" data-testid="what-was-read-box">
+      <summary className="min-h-11 cursor-pointer font-semibold">What was read</summary>
+      <pre className="mt-2 max-h-64 overflow-auto text-sm whitespace-pre-wrap" data-testid="what-was-read">{text}</pre>
+      <button type="button" className={`${btn} mt-2`} onClick={async () => { await navigator.clipboard?.writeText(text); setCopied(true); }}>
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </details>
+  );
+}
+
+function Confirm({ item, next, text }: { item: InboxItem; next?: string | undefined; text: string | undefined }) {
   const navigate = useNavigate();
-  const choices = useLive(async () => ({ trips: await queries.tripChoices(), last: await repo.lastTripId(), memory: await repo.payeeMemory() }));
+  const choices = useLive(async () => ({
+    trips: await queries.tripChoices(), last: await repo.lastTripId(), memory: await repo.payeeMemory(),
+    knownPayees: await repo.knownPayees(), anchors: await repo.anchors(),
+  }));
   const [tripId, setTripId] = useState<string>();
   const [discarding, setDiscarding] = useState(false);
   if (!choices) return <p role="status">Loading…</p>;
@@ -83,16 +104,19 @@ function Confirm({ item, next, patch }: { item: InboxItem; next?: string | undef
   const today = todayLocal();
   const inWindow = choices.trips.find((c) => c.trip.startDate <= today && today <= c.trip.endDate);
   const chosen = choices.trips.find((c) => c.trip.id === tripId) ?? inWindow ?? choices.trips.find((c) => c.trip.id === choices.last) ?? choices.trips[0]!;
+  const bufferDays = normaliseRules(chosen.grant.rules).travelBufferDays;
 
-  // Text items are read by the same parser OCR output goes through; the user always confirms (principle 3).
-  const initial = item.kind === 'text' ? formValuesFromReceipt(parseReceiptText(item.text ?? '')) : {};
+  // Up to three suggestions per field (REQ-CAP-15); dates inside this trip's dates rank first. The user always confirms.
+  const suggestions = text
+    ? suggestFields(text, { window: allowedWindow(chosen.trip, bufferDays), knownPayees: choices.knownPayees, anchors: choices.anchors })
+    : undefined;
   const goNext = () => navigate(next ? `/inbox/${next}` : '/inbox');
 
   return (
     <>
       <ExpenseFormFields
-        key={item.id} patch={patch} check={Object.keys(initial) as (keyof ExpenseFormInput)[]} tripRates={chosen.trip.fxRatesMicro}
-        tripWindow={{ trip: chosen.trip, bufferDays: normaliseRules(chosen.grant.rules).travelBufferDays }} memory={choices.memory} initial={initial} submitLabel="Confirm expense"
+        key={item.id} suggestions={suggestions} suggestionsKey={`${item.id}:${text?.length ?? 0}`} tripRates={chosen.trip.fxRatesMicro}
+        tripWindow={{ trip: chosen.trip, bufferDays }} memory={choices.memory} submitLabel="Confirm expense"
         top={
           <>
             <SelectField id="trip" label="Trip" value={chosen.trip.id} onChange={setTripId}
@@ -101,7 +125,7 @@ function Confirm({ item, next, patch }: { item: InboxItem; next?: string | undef
               options={(Object.keys(PROOF_TYPE_LABELS) as ProofType[]).map((t) => ({ value: t, label: PROOF_TYPE_LABELS[t] }))} />
           </>
         }
-        onSubmit={async (fields) => { if (await attempt(() => repo.confirmInboxItem(item.id, chosen.trip.id, fields))) goNext(); }}
+        onSubmit={async (fields) => { if (await attempt(() => repo.confirmInboxItem(item.id, chosen.trip.id, fields, text))) goNext(); }}
         actions={
           <>
             <button type="button" className={btnDanger} onClick={() => setDiscarding(true)}>Discard</button>
@@ -124,15 +148,14 @@ function Confirm({ item, next, patch }: { item: InboxItem; next?: string | undef
 export function InboxItemPage() {
   const { itemId = '' } = useParams();
   const data = useLive(async () => ({ item: (await queries.inboxItem(itemId)) ?? null, list: await queries.inboxList() }), [itemId]);
-  const [patch, setPatch] = useState<FormPatch>();
   const [ocrText, setOcrText] = useState<{ itemId: string; text: string }>();
   if (!data) return <p role="status">Loading…</p>;
   if (!data.item) return <p role="alert">That Inbox item is gone (it may have been confirmed). <Link to="/inbox" className="underline">Back to Inbox</Link></p>;
   const { item, list } = data;
   const next = list.find((i) => i.id !== item.id)?.id;
-  const push = (values: Partial<ExpenseFormInput>, source: FormPatch['source']) => setPatch((p) => ({ id: (p?.id ?? 0) + 1, itemId: item.id, values, source }));
   const isImage = item.kind === 'file' && !!item.mime?.startsWith('image/');
-  const assignText = item.kind === 'text' ? item.text : ocrText?.itemId === item.id ? ocrText.text : undefined;
+  const read = ocrText?.itemId === item.id ? ocrText.text : undefined;
+  const text = item.kind === 'text' ? item.text : read;
 
   return (
     <div>
@@ -141,14 +164,12 @@ export function InboxItemPage() {
         <div>
           {item.kind === 'file' && <ProofView file={item} />}
           {isImage && <OcrStatus />}
-          {isImage && (
-            <Recognition key={item.id} item={item} onText={(text, values) => { setOcrText({ itemId: item.id, text }); push(values, 'recognition'); }} />
-          )}
+          {isImage && <Recognition key={item.id} item={item} onText={(t) => setOcrText({ itemId: item.id, text: t })} />}
           {item.kind === 'text' && <pre className="mb-4 rounded-lg border border-line bg-surface p-3 text-sm whitespace-pre-wrap" data-testid="inbox-text">{item.text}</pre>}
-          {assignText && <TextAssigner key={item.id + (item.kind === 'file' ? 'ocr' : '')} text={assignText} onAssign={(values) => push(values, 'user')} />}
+          {read && <WhatWasRead text={read} />}
           {item.kind === 'file' && !isImage && <p className="mb-4 text-sm text-ink-soft">Type the amount, date and payee from this file.</p>}
         </div>
-        <Confirm key={item.id} item={item} next={next} patch={patch?.itemId === item.id ? patch : undefined} />
+        <Confirm key={item.id} item={item} next={next} text={text} />
       </div>
     </div>
   );

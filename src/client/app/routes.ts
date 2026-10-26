@@ -21,6 +21,7 @@ export const routes: readonly RouteDef[] = [
   { id: 'expense', path: '/expenses/:expenseId', sample: '/expenses/none', title: 'Expense', shell: 'researcher' },
   { id: 'inbox', path: '/inbox', sample: '/inbox', title: 'Inbox', shell: 'researcher' },
   { id: 'inbox-item', path: '/inbox/:itemId', sample: '/inbox/none', title: 'Inbox item', shell: 'researcher' },
+  { id: 'settings', path: '/settings', sample: '/settings', title: 'Settings', shell: 'researcher' },
   { id: 'reviewer-sample', path: '/review/sample', sample: '/review/sample', title: 'Review sample claim', shell: 'reviewer' },
   { id: 'not-found', path: '*', sample: '/no-such-page', title: 'Page not found', shell: 'researcher' },
 ];

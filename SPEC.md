@@ -242,8 +242,8 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-CAP-12 | Backup export/import (JSON) | S | 02 |
 | REQ-CAP-13 | Paste or share SMS/notification text → parse (no OCR needed) | M | 02 |
 | REQ-CAP-14 | Category suggestion from merchant, learned per payee; user confirms | M | 02 |
-| REQ-CAP-15 | Tap words of an SMS/OCR text to assign them to Amount/Date/Payee/Reference | M | 02 |
-| REQ-CAP-16 | Learn anchor words from the user's corrections (no values stored) | S | 02 |
+| REQ-CAP-15 | Up to three suggested values per field from recognised text, one tap to apply | M | 02 |
+| REQ-CAP-16 | Learn payee spellings and message formats from confirmed expenses | S | 02 |
 | REQ-CSV-01 | Upload and parse CSV in-browser | M | 03 |
 | REQ-CSV-02 | Column mapping and date format | M | 03 |
 | REQ-CSV-03 | Transaction table: search, window filter, select | M | 03 |
@@ -401,6 +401,8 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-26 v0.4.7 — REQ-CAP-15 (suggested values per field) and REQ-CAP-16 (learning) `built`. Checked on the owner's real receipt photo (kept out of the repository): the total, shop, date and invoice number now come out, where the unprepared read lost the shop name and misread 560.00 as 60.00. A date whose day had to be guessed ("72" for 22) is offered as chips and never prefilled. Alternatives for the amount must be plausible next to the leading one. A synthetic degraded receipt (`fixtures/receipt-photo.jpg`: shadow, tilt, blur, grain) replaces real invoices in the tests. Dexie schema is now version 2 (payee spellings, message formats), migrating existing data in place.
+- 2026-10-26 v0.4.6 — Tried on a real photographed receipt: the tap-the-words design (REQ-CAP-15) showed hundreds of words and made more work than paper, so it is replaced by up to three suggested values per field. The photo also read badly (`560.00` as `60.00`, "August" as "hugust"), so recognition now preprocesses images (contrast stretch and adaptive threshold, orientation and size handled), matches month names approximately and repairs look-alike characters. REQ-CAP-16 now has acceptance criteria (payee spelling memory and message-format memory, local, with a Settings control) and is built now, ahead of the original schedule.
 - 2026-10-26 v0.4.5 — M1b. REQ-CAP-05 (recognition), REQ-OFF-05 (self-hosted, background-cached recognition data), REQ-DEMO-05 (fixtures) and REQ-CAP-03 / REQ-OFF-03 (share target; phone check pending) marked `built`. OFF-02 precache wording reconciled with OFF-05 (recognition data is cached in the background, not at install). Tesseract drops the ₹ sign, so the parser accepts a standalone money-formatted number when no marked amount exists. The share target needs a real Android check before it can be `verified`.
 - 2026-10-26 v0.4.4 — Banks' SMS formats cannot all be anticipated, and sending text to a model would break REQ-PRIV-01. Added REQ-CAP-15 (tap words to assign them to a field: the guarantee, MUST) and REQ-CAP-16 (learn anchor words from corrections: SHOULD, scheduled after M1b).
 - 2026-10-26 v0.4.3 — Owner's real SMS ("Rs 2399 spent@ ABDUSROLLS on 25OCT26 … Bal Rs.123456 Ref 34567") exposed format-specific parsing: payee after "@", dates without separators, short references, and balance figures left in the stored text. Parser widened and balances now scrubbed (REQ-CAP-13). Same session: REQ-RULE-02 built early, so a date outside the trip window warns in the form and flags the expense (REQ-CAP-06 chip and filter, REQ-SET-02 re-evaluation).

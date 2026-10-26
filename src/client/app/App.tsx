@@ -7,6 +7,7 @@ import { ExpensePage } from '../features/live/ExpensePage.tsx';
 import { InboxItemPage } from '../features/live/InboxItemPage.tsx';
 import { InboxPage } from '../features/live/InboxPage.tsx';
 import { TripPage } from '../features/live/TripPage.tsx';
+import { SettingsPage } from '../features/settings/SettingsPage.tsx';
 import { GrantFormPage } from '../features/setup/GrantFormPage.tsx';
 import { GrantPage } from '../features/setup/GrantPage.tsx';
 import { GrantsPage } from '../features/setup/GrantsPage.tsx';
@@ -27,6 +28,7 @@ const screens: Record<string, ReactElement> = {
   expense: <ExpensePage />,
   inbox: <InboxPage />,
   'inbox-item': <InboxItemPage />,
+  settings: <SettingsPage />,
   'reviewer-sample': (
     <ComingSoon heading="Sample claim" note="The reviewer view of a sample claim arrives in milestone M3." />
   ),

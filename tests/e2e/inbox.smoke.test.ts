@@ -100,78 +100,82 @@ test.describe('REQ-CAP-13: the owner\'s own SMS format', () => {
   });
 });
 
-test.describe('REQ-CAP-15: tap to assign', () => {
-  const UNKNOWN = 'Alert 2399 INR XYZ MART 25/10/26 thanks'; // amount after the currency and no merchant marker: nothing to anchor on
-  const word = (page: Page, text: string) => page.getByTestId('assigner-words').getByRole('button', { name: text, exact: true });
+test.describe('REQ-CAP-15: suggested values for each field', () => {
+  // An invoice-like message with several dates and amounts: the right ones must be offered, the rest one tap away.
+  const INVOICE = ['Sample Cafe', 'Invoice No: INV-4471', 'Date: 22 Aug 2026', 'Paid on 12 Nov 2026', 'Subtotal 1000.00', 'GST 5% 50.00', 'Grand Total 1050.00'].join('\n');
 
-  test('REQ-CAP-15: a format the parser cannot read is completed with taps: payee, amount, date', async ({ page }) => {
-    await withTrip(page);
-    await pasteText(page, UNKNOWN);
+  test('REQ-CAP-15: the best suggestion is prefilled and marked Check; the other options sit under the field, one tap each', async ({ page }) => {
+    await withTrip(page); // trip is 10–14 Nov 2026
+    await pasteText(page, INVOICE);
     await page.getByRole('link', { name: 'Review' }).click();
-    await expect(page.getByLabel('Paid to (payee)')).toHaveValue(''); // nothing guessed for these two
+
+    // Dates inside the trip dates rank first, the invoice date is the alternative.
+    await expect(page.getByLabel('Date')).toHaveValue('2026-11-12');
+    await expect(page.getByTestId('check-date')).toBeVisible();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('1050'); // next to "Grand Total"
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('Sample Cafe');
+    await expect(page.getByLabel(/^Reference/)).toHaveValue('INV-4471');
+
+    const dateChips = page.getByTestId('suggest-date').getByRole('button');
+    await expect(dateChips).toHaveCount(1);
+    await dateChips.first().click();
+    await expect(page.getByLabel('Date')).toHaveValue('2026-08-22');
+    await expect(page.getByTestId('check-date')).toHaveCount(0); // choosing it counts as the user's own confirmation
+    await expect(page.getByTestId('date-window-warning')).toContainText('Dated 22 Aug 2026'); // and the trip-window warning follows
+
+    // The amount alternatives: at most three, never the value already in the field.
+    const amountChips = page.getByTestId('suggest-amount').getByRole('button');
+    expect(await amountChips.count()).toBeGreaterThan(0);
+    expect(await amountChips.count()).toBeLessThanOrEqual(2);
+    await expect(page.getByTestId('suggest-amount')).not.toContainText('₹1,050.00');
+    await page.getByTestId('suggest-amount').getByRole('button', { name: /₹1,000\.00/ }).click();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('1000');
+  });
+
+  test('REQ-CAP-15: a date whose day was misread is never prefilled: both readings are chips, and one tap chooses', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, 'Sample Cafe\nDate: 72-bugust-2026\nTotal 100.00');
+    await page.getByRole('link', { name: 'Review' }).click();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('100');
+    await expect(page.getByLabel('Date')).not.toHaveValue(/^2026-08/); // left as it was, not guessed
+    await expect(page.getByTestId('check-date')).toHaveCount(0);
+    const chips = page.getByTestId('suggest-date').getByRole('button');
+    await expect(chips).toHaveCount(2);
+    await expect(chips.first()).toContainText('read with a guess');
+    await page.getByTestId('suggest-date').getByRole('button', { name: /^22 Aug 2026/ }).click();
+    await expect(page.getByLabel('Date')).toHaveValue('2026-08-22');
+  });
+
+  test('REQ-CAP-15: there is no list of every word on the page, and the full text is in a closed "What was read" section only for screenshots', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, INVOICE);
+    await page.getByRole('link', { name: 'Review' }).click();
+    await expect(page.getByTestId('assigner-words')).toHaveCount(0);
+    await expect(page.getByTestId('text-assigner')).toHaveCount(0);
+    // each suggestion chip is a button at least 44 px tall
+    const chip = page.getByTestId('suggest-date').getByRole('button').first();
+    expect((await chip.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  });
+
+  test('REQ-CAP-15: a chip equal to the current value is not shown, and nothing plausible means no chips and an empty field', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, 'hello, see you tomorrow');
+    await page.getByRole('link', { name: 'Review' }).click();
     await expect(page.getByLabel(/^Amount/)).toHaveValue('');
-
-    await expect(page.getByRole('button', { name: 'Use as payee' })).toBeDisabled();
-    await word(page, 'XYZ').click();
-    await word(page, 'MART').click();
-    await expect(word(page, 'XYZ')).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('button', { name: 'Use as payee' }).click();
-    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('XYZ MART');
-    await expect(word(page, 'XYZ')).toHaveAttribute('aria-pressed', 'false'); // selection cleared
-    await expect(page.getByTestId('assigner-note')).toContainText('Payee set to XYZ MART');
-
-    await word(page, '2399').click();
-    await page.getByRole('button', { name: 'Use as amount' }).click();
-    await expect(page.getByLabel(/^Amount/)).toHaveValue('2399');
-
-    await word(page, '25/10/26').click();
-    await page.getByRole('button', { name: 'Use as date' }).click();
-    await expect(page.getByLabel('Date')).toHaveValue('2026-10-25');
-
-    await page.getByRole('button', { name: 'Confirm expense' }).click();
-    await expect(page.getByTestId('inbox-empty')).toBeVisible();
-    await page.getByRole('link', { name: 'Grants' }).click();
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
-    await expect(remaining(page)).toHaveText('₹77,601.00 left');
-  });
-
-  test('REQ-CAP-15: an unreadable selection shows a message and leaves the form unchanged; Clear empties the selection', async ({ page }) => {
-    await withTrip(page);
-    await pasteText(page, UNKNOWN);
-    await page.getByRole('link', { name: 'Review' }).click();
-    await word(page, 'Alert').click();
-    await page.getByRole('button', { name: 'Use as amount' }).click();
-    await expect(page.getByTestId('assigner-note')).toContainText('"Alert" does not look like an amount.');
-    await expect(page.getByLabel(/^Amount/)).toHaveValue('');
-    await page.getByRole('button', { name: 'Use as date' }).click();
-    await expect(page.getByTestId('assigner-note')).toContainText('does not look like a date');
-    await page.getByRole('button', { name: 'Clear' }).click();
-    await expect(word(page, 'Alert')).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.getByRole('button', { name: 'Use as reference' })).toBeDisabled();
-  });
-
-  test('REQ-CAP-15: words are keyboard-usable buttons at least 44 px tall', async ({ page }) => {
-    await withTrip(page);
-    await pasteText(page, UNKNOWN);
-    await page.getByRole('link', { name: 'Review' }).click();
-    const box = await word(page, 'Alert').boundingBox();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
-    await word(page, 'Alert').focus();
-    await page.keyboard.press('Space');
-    await expect(word(page, 'Alert')).toHaveAttribute('aria-pressed', 'true');
-  });
-
-  test('REQ-CAP-15: a selection assigned for one Inbox item is not carried onto the next item', async ({ page }) => {
-    await withTrip(page);
-    await pasteText(page, 'second message ZED STORE');
-    await pasteText(page, UNKNOWN);
-    await page.getByTestId('inbox-item').filter({ hasText: 'XYZ MART' }).getByRole('link', { name: 'Review' }).click();
-    await word(page, 'XYZ').click();
-    await page.getByRole('button', { name: 'Use as payee' }).click();
-    await page.getByLabel(/^Amount/).fill('10');
-    await page.getByRole('button', { name: 'Confirm expense' }).click();
-    await expect(page.getByTestId('inbox-text')).toContainText('second message');
     await expect(page.getByLabel('Paid to (payee)')).toHaveValue('');
+    for (const field of ['amount', 'date', 'payee', 'reference']) await expect(page.getByTestId(`suggest-${field}`)).toHaveCount(0);
+    await expect(page.getByTestId('check-payee')).toHaveCount(0);
+  });
+
+  test('REQ-CAP-15: suggestions never overwrite what the user has already typed', async ({ page }) => {
+    await withTrip(page);
+    await pasteText(page, INVOICE);
+    await page.getByRole('link', { name: 'Review' }).click();
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('Sample Cafe');
+    // Typing replaces the prefill and removes its mark; the old suggestion then comes back as a chip.
+    await page.getByLabel('Paid to (payee)').fill('My Own Words');
+    await expect(page.getByTestId('check-payee')).toHaveCount(0);
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('My Own Words');
   });
 });
 

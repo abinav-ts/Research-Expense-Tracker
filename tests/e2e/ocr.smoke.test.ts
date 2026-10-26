@@ -55,9 +55,10 @@ test.describe('REQ-CAP-05: OCR prefill for screenshots', () => {
     await expect(page.getByLabel(/^Amount/)).toHaveValue('2450', { timeout: 30_000 });
     await expect(page.getByLabel('Paid to (payee)')).toHaveValue('HOTEL SAMPLE');
     await expect(page.getByLabel('Date')).toHaveValue('2026-11-12');
-    const words = await page.getByTestId('assigner-words').innerText();
-    expect(words).not.toContain('1234');
-    expect(words).not.toContain('85,000');
+    const read = await page.getByTestId('what-was-read').textContent();
+    expect(read).toContain('HOTEL SAMPLE');
+    expect(read).not.toContain('1234'); // card digits are scrubbed before the text is even kept in memory
+    expect(read).not.toContain('85,000');
   });
 
   test('REQ-CAP-05: a foreign invoice only suggests: the total and currency are filled for the user to confirm', async ({ page }) => {
@@ -68,17 +69,6 @@ test.describe('REQ-CAP-05: OCR prefill for screenshots', () => {
     await expect(page.getByLabel('Currency')).toHaveValue('EUR');
     await expect(page.getByTestId('check-currency')).toBeVisible();
     await expect(page.getByLabel('Estimated rate (₹ per 1 unit)')).toBeVisible(); // a rate is still needed from the user
-  });
-
-  test('REQ-CAP-05: words read from a screenshot can be tapped to fix a field (REQ-CAP-15)', async ({ page }) => {
-    await setup(page);
-    await page.getByLabel('Choose proof files').setInputFiles(fixture('upi-success.png'));
-    await openFirstInboxItem(page);
-    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('RAMESH STORES', { timeout: 30_000 });
-    await page.getByTestId('assigner-words').getByRole('button', { name: 'RAMESH', exact: true }).click();
-    await page.getByRole('button', { name: 'Use as payee' }).click();
-    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('RAMESH');
-    await expect(page.getByTestId('check-payee')).toHaveCount(0);
   });
 
   test('REQ-CAP-05: an unreadable image leaves the form empty and the expense can still be saved', async ({ page }) => {
@@ -114,6 +104,49 @@ test.describe('REQ-CAP-05: OCR prefill for screenshots', () => {
   });
 });
 
+test.describe('REQ-CAP-05: a photographed receipt', () => {
+  test('REQ-CAP-05, REQ-CAP-15: a shadowed, tilted, grainy receipt photo still gives shop, total, date and invoice number, with "What was read" closed', async ({ page }) => {
+    await setup(page); // trip 10–14 Nov 2026; the receipt is dated 22 Aug 2026
+    await page.getByLabel('Choose proof files').setInputFiles(fixture('receipt-photo.jpg'));
+    await openFirstInboxItem(page);
+    const started = Date.now();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('560', { timeout: 60_000 });
+    expect(Date.now() - started).toBeLessThan(25_000);
+    await expect(page.getByLabel('Paid to (payee)')).toHaveValue('Sample Book House');
+    await expect(page.getByLabel('Date')).toHaveValue('2026-08-22');
+    await expect(page.getByLabel(/^Reference/)).toHaveValue(/47612$/);
+    await expect(page.getByTestId('date-window-warning')).toContainText('Dated 22 Aug 2026, outside the allowed window');
+
+    // Nothing here makes the user work through the text: it is closed, and chips are few.
+    await expect(page.getByTestId('what-was-read-box')).not.toHaveAttribute('open', '');
+    await expect(page.getByTestId('assigner-words')).toHaveCount(0);
+    for (const field of ['amount', 'date', 'payee', 'reference']) {
+      expect(await page.getByTestId(`suggest-${field}`).getByRole('button').count()).toBeLessThanOrEqual(2);
+    }
+    const formTop = await page.getByLabel(/^Amount/).boundingBox();
+    const formBottom = await page.getByRole('button', { name: 'Confirm expense' }).boundingBox();
+    expect(formBottom!.y - formTop!.y).toBeLessThan(1500); // the whole form stays within a couple of screens
+    await page.getByLabel(/^Amount/).fill('560');
+    await page.getByRole('button', { name: 'Confirm expense' }).click();
+    await expect(page.getByTestId('inbox-empty')).toBeVisible();
+  });
+
+  test('REQ-CAP-05: the same receipt read without preparing the image loses the shop name, date and invoice number: preparation is what makes photos readable', async ({ page }) => {
+    await page.addInitScript(() => {
+      // make createImageBitmap fail so the app falls back to the original image, as it does on a browser without support
+      (window as unknown as { createImageBitmap: unknown }).createImageBitmap = () => Promise.reject(new Error('unsupported'));
+    });
+    await setup(page);
+    await page.getByLabel('Choose proof files').setInputFiles(fixture('receipt-photo.jpg'));
+    await openFirstInboxItem(page);
+    await expect(page.getByTestId('ocr-note')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByLabel('Paid to (payee)')).not.toHaveValue('Sample Book House');
+    await expect(page.getByLabel('Date')).not.toHaveValue('2026-08-22');
+    await expect(page.getByLabel(/^Reference/)).not.toHaveValue(/47612$/);
+    await page.getByLabel(/^Amount/).fill('560'); // and the form still works for typing
+  });
+});
+
 test.describe('REQ-DEMO-05: synthetic watermarked fixtures', () => {
   for (const name of ['upi-success.png', 'card-alert-sms.png', 'foreign-invoice.png']) {
     test(`REQ-DEMO-05: fixtures/${name} is watermarked SAMPLE and is read by recognition`, async ({ page }) => {
@@ -121,8 +154,9 @@ test.describe('REQ-DEMO-05: synthetic watermarked fixtures', () => {
       await page.getByLabel('Choose proof files').setInputFiles(fixture(name));
       await openFirstInboxItem(page);
       await expect(page.getByTestId('ocr-note')).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByTestId('assigner-words')).toContainText('SAMPLE'); // the footer watermark was read
-      await expect(page.getByTestId('assigner-words')).toContainText('synthetic');
+      const read = await page.getByTestId('what-was-read').textContent(); // the footer watermark was read
+      expect(read).toContain('SAMPLE');
+      expect(read).toContain('synthetic');
     });
   }
 });

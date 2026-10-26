@@ -67,6 +67,7 @@ export function GrantsPage() {
           ))}
         </ul>
       )}
+      <p className="mt-8"><Link to="/settings" className="font-semibold text-breeze-deep underline">Settings</Link></p>
     </div>
   );
 }
