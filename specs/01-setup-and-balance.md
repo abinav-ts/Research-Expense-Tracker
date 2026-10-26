@@ -118,6 +118,15 @@ Acceptance:
 - Given no pending spend, Then the "pending verification" phrase is not shown.
 Tests: tests/unit/balance.test.ts
 
+### REQ-BAL-07 — Verified share and grouping [SHOULD] [agreed]
+The system shall show how much of the spend has been verified against the bank statement, as a percentage, and separate verified expenses from the rest.
+Acceptance:
+- **Percentage:** verified = the amount of confirmed expenses ÷ (confirmed + pending bank-paid expenses), by amount, rounded down, excluding excluded and cash expenses. Shown as "40% verified" with a small bar on each grant card (home), on the grant page and on the trip page. With no bank-paid spend it is not shown.
+- **Grouping:** the trip's expense list has two sections: "Still to verify (N)" first, then "Verified against your statement (N)" at the bottom, each grouped by day as before. Cash expenses (which have no statement row) sit in the first section.
+- **Colour:** verified rows use a different panel colour (the ground tint with a teal border) and the "✓ Confirmed" chip, so the two groups are told apart by more than colour.
+- Given ₹10,000 pending and ₹30,000 confirmed, Then "75% verified"; given everything confirmed, Then "100% verified"; given a pending ₹1.00 and confirmed ₹3.00, Then "75% verified".
+Tests: tests/unit/balance.test.ts, tests/e2e/balance.smoke.test.ts
+
 ## Open questions
 - Is "amount already utilised" one number per grant, or do users want to enter prior trips? (Default: one number.)
 - Do sanctioned amounts have a separate travel head with its own total? (Default: no.)

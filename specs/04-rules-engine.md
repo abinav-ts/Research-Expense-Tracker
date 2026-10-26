@@ -1,6 +1,6 @@
 # 04 — Rules Engine
 
-Status: **PROPOSED v0.5 — written 2026-10-26 for M2, awaiting the owner's approval** (REQ-RULE-02 is already built and in use)
+Status: **AGREED v0.5 — the owner answered the design decisions on 2026-10-26** (REQ-RULE-02 is already built and in use)
 Covers: flags on claim items. Parent: `../SPEC.md`.
 
 ## Design
@@ -13,13 +13,13 @@ Covers: flags on claim items. Parent: `../SPEC.md`.
 
 ## Requirements
 
-### REQ-RULE-01 — Pure, deterministic evaluate() [MUST] [draft]
+### REQ-RULE-01 — Pure, deterministic evaluate() [MUST] [agreed]
 Same input always gives the same output; no I/O, clocks or randomness; inputs are not changed.
 Acceptance:
 - Given the same draft and context evaluated twice, Then the two flag lists are equal and in the same order; the draft is unchanged afterwards.
 - Given items in any order in the draft, Then the output order depends only on item date and creation order.
 - A draft with no problems gives an empty list.
-- The expense list, expense page and trip page show these flags (replacing the date-only flag of M1): a chip per flag on the row (⚠ warn, ✖ error, with words), all flags with their messages on the expense page.
+- The expense list, expense page and trip page show these flags (replacing the date-only flag of M1): up to two chips per row (⚠ warn, ✖ error, with words, then "+N more"), and all flags with their messages on the expense page. UNVERIFIED_AMOUNT is the exception: it is not a chip on every row (see REQ-RULE-11 and REQ-BAL-07).
 Tests: tests/unit/rules.test.ts
 
 ### REQ-RULE-02 — DATE_OUT_OF_WINDOW [MUST] [built]
@@ -32,7 +32,7 @@ Acceptance:
 - In M1 the flag is shown live in the form, the row chip, the "flagged only" filter and the expense page; from M2 it comes out of `evaluate()` like every other rule.
 Tests: tests/unit/rules.date-window.test.ts, tests/e2e/capture.smoke.test.ts
 
-### REQ-RULE-03 — OVER_CATEGORY_CAP [MUST] [draft]
+### REQ-RULE-03 — OVER_CATEGORY_CAP [MUST] [agreed]
 Warn when a category's total on the claim exceeds `capPerTripMinor`; the flag attaches to the item that crosses the cap.
 Acceptance:
 - Given "Local transport" capped at ₹3,000.00 and items of ₹1,000.00, ₹1,500.00 and ₹1,000.00 in date order, Then only the third (running total ₹3,500.00) is flagged, with a message naming the cap and the amount over (₹500.00).
@@ -41,20 +41,20 @@ Acceptance:
 - Given two categories both over their caps, Then each gets its own flag.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-04 — OVER_GRANT_BALANCE [MUST] [draft]
+### REQ-RULE-04 — OVER_GRANT_BALANCE [MUST] [agreed]
 Error when the claim total exceeds what is left of the grant for this claim (REQ-BAL-01 minus the grant's other trips).
 Acceptance:
 - Given a grant of ₹1,00,000 with ₹20,000 utilised before, other trips' spend ₹30,000, and a claim of items ₹20,000, ₹25,000 and ₹10,000 in date order, Then the available amount is ₹50,000.00 and only the third item (running total ₹55,000.00) is flagged as an error, with the amount over (₹5,000.00).
 - Given a claim total exactly equal to the available amount, Then no flag.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-05 — CATEGORY_NOT_ELIGIBLE [MUST] [draft]
+### REQ-RULE-05 — CATEGORY_NOT_ELIGIBLE [MUST] [agreed]
 Error when the item's category is not eligible for the grant.
 Acceptance:
 - Given "Meals" marked not eligible, Then every Meals item gets an error flag naming the category; an item with another category or none does not.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-06 — MISSING_PROOF [MUST] [draft]
+### REQ-RULE-06 — MISSING_PROOF [MUST] [agreed]
 Warn when the item's category `requiresProof` and the item has no attachment (any proof type counts; a pasted message is a proof).
 Acceptance:
 - Given a category that requires proof and an item with no attachment, Then a warn flag; with one attachment, Then none; given `requiresProof = false`, Then none.
@@ -64,47 +64,48 @@ Tests: tests/unit/rules.test.ts
 ### REQ-RULE-07 — DUPLICATE [SHOULD] [draft]
 Covered while adding expenses by REQ-CAP-07. Not part of M2.
 
-### REQ-RULE-08 — FOREIGN_CURRENCY_NO_RATE [MUST] [draft]
+### REQ-RULE-08 — FOREIGN_CURRENCY_NO_RATE [MUST] [agreed]
 Error when an expense has a non-INR original currency, is still pending, and has no estimated rate. (The UI also prevents saving such an expense; the rule protects imported and backup data.)
 Acceptance:
 - Given EUR 89.00 with no `estimatedRateMicro` and status pending, Then an error flag; with a rate, Then none; once matched to a statement debit (confirmed), Then none because the statement amount is used.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-09 — Severity model and justification [MUST] [draft]
+### REQ-RULE-09 — Severity model and justification [MUST] [agreed]
 `error` blocks submission until the item is fixed or removed; `warn` never blocks but appears in the pack and the reviewer view; `info` is advisory. The user may add a justification text to any flagged item; it appears next to the flag.
 Acceptance:
 - A justification (up to 500 characters) is saved with the expense and shown under its flags on the expense page and as a line on the row. It never clears a flag: it explains it.
-- `hasBlockingFlags(flags)` is true exactly when any flag has severity `error`; the trip page shows "N items need fixing before this can be claimed" with a link to the first.
+- `hasBlockingFlags(flags)` is true exactly when any flag has severity `error`. The trip page shows "N items need fixing before this can be claimed" (items with an error other than UNVERIFIED_AMOUNT, which the verified percentage covers) with a link to the first.
 - Clearing the justification text removes it.
 Tests: tests/unit/rules.test.ts, tests/e2e/rules.smoke.test.ts
 
 ### REQ-RULE-10 — Thresholds come from grant config [SHOULD] [draft]
 Caps, eligibility, proof requirement and the date buffer are read from `grant.rules` on every evaluation (nothing is hard-coded). Not part of M2 beyond what the rules above already do.
 
-### REQ-RULE-11 — UNVERIFIED_AMOUNT [MUST] [draft]
+### REQ-RULE-11 — UNVERIFIED_AMOUNT [MUST] [agreed]
 Error when a claim item is a bank-paid expense (domestic or foreign) with no matched statement debit: the authority accepts only the statement INR debit. Clears when the expense is matched (REQ-CSV-08) or removed from the claim.
 Acceptance:
 - Given a claim item with `inrStatus = 'pending'` and `paymentMode = 'bank'`, Then an `UNVERIFIED_AMOUNT` error flag is raised and submission is blocked (REQ-RULE-09).
 - Given the item is matched to a statement row, Then no flag.
 - Given a cash item, Then this rule does not apply (REQ-RULE-13 applies instead).
+- The flag exists in the engine and blocks submission, but the screens do not repeat it as a red chip on every row. They show the **verified percentage** (REQ-BAL-07) and keep unverified expenses together at the top of the trip's list; the full flag text is on the expense page. (Owner's decision: a trip full of untouched proofs must not look like a wall of red.)
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-12 — UNCATEGORISED [MUST] [draft]
+### REQ-RULE-12 — UNCATEGORISED [MUST] [agreed]
 Error when an item has no category (REQ-CAP-14 only suggests, never decides).
 Acceptance:
 - Given an item with no category, Then an error flag asking for a category; with any category, Then none.
 Tests: tests/unit/rules.test.ts
 
-### REQ-RULE-13 — CASH_NOT_IN_STATEMENT [SHOULD] [draft]
+### REQ-RULE-13 — CASH_NOT_IN_STATEMENT [SHOULD] [agreed]
 Warn on cash-paid items (no statement row exists). The user must add a justification, which is shown to the reviewer.
 Acceptance:
 - Given a cash item without a justification, Then a warn flag saying a justification is needed; with a justification, Then the flag stays (as information that it is cash) and its message includes "justified".
 Tests: tests/unit/rules.test.ts
 
-## Decisions this proposal makes (change any of them)
+## Decisions (agreed by the owner, 2026-10-26)
 1. A flag for a cap or the grant balance sits on the **one item that crosses the line** (as the draft said), not on every later item.
 2. Items with no category are only flagged by REQ-RULE-12, so a missing category does not also produce "no proof needed" noise.
-3. Every pending bank-paid expense carries a red UNVERIFIED_AMOUNT flag until it is matched, so a trip full of untouched proofs looks red. That is the intended signal ("not claimable yet"), shown as one summary line at the top of the trip as well as per row.
+3. UNVERIFIED_AMOUNT is shown as the verified percentage and by grouping (agreed 2026-10-26: no red chip on every row); see REQ-BAL-07.
 
 ## Open questions
 - Should any warn become an error for your real grant authority (D-4)?

@@ -167,6 +167,7 @@ interface Expense {
   statementRef?: StatementRef;   // set when matched to a statement row → inrMinor = debit, inrStatus 'confirmed'
   source: 'proof' | 'manual' | 'statement';
   attachments: Attachment[]; excluded: boolean; createdAt; updatedAt;
+  justification?: string;        // why a flagged item is fine (REQ-RULE-09), up to 500 characters
 }
 interface StatementRef { date; narration; debitMinor; refNo?; rowHash }   // only these fields ever leave the device
 interface Attachment { id; kind: 'proof' | 'supporting_doc';
@@ -177,7 +178,8 @@ interface InboxItem { id; kind: 'file' | 'text'; receivedAt; proofType?;      //
   text? }                                                                      // text items: already scrubbed of card digits and available-limit text (REQ-CAP-13)
 
 interface Flag { ruleId; severity: 'info' | 'warn' | 'error'; message; itemId }
-interface ClaimItem { id; date; description;
+interface ClaimItem { id; date; description;       // built by buildClaimDraft() from the trip's non-excluded expenses (REQ-RULE-01)
+  paymentMode: 'bank' | 'cash'; inrStatus: 'pending' | 'confirmed'; estimatedRateMicro?: number; attachmentCount: number;   // what the rules read
   amountMinor: number;                       // statement INR debit (REQ-CLM-08)
   originalMinor?: number; originalCurrency?: string;   // shown for information on foreign items
   categoryId; reference?; statementRef?: StatementRef; attachmentIds: string[]; justification? }
@@ -227,6 +229,7 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-BAL-03 | Per-category cap bars | S | 01 |
 | REQ-BAL-04 | Trip budget remaining | S | 01 |
 | REQ-BAL-05 | "Balance after this expense" preview on confirm | C | 01 |
+| REQ-BAL-07 | Verified percentage; unverified expenses first, verified ones below in another colour | S | 01 |
 | REQ-BAL-06 | Confirmed vs pending-verification split | M | 01 |
 | REQ-CAP-01 | Manual add expense | M | 02 |
 | REQ-CAP-02 | Add proof via picker/camera/files (multi) | M | 02 |
@@ -402,6 +405,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-26 v0.5.1 — Specs 03 and 04 agreed with the owner's answers: statement rows are not saved unless ticked or paired (an optional "keep this statement" is a possible later add-on); a note about hidden credits sits in the transaction table's summary; UNVERIFIED_AMOUNT is shown as a verified percentage and by grouping instead of a red chip on every row (new REQ-BAL-07); cap and balance flags sit on the single crossing item. `Expense.justification` and extra `ClaimItem` fields added to §6.
 - 2026-10-26 v0.5.0 — M2 specs proposed (not yet agreed): `specs/03-statement-claim.md` and `specs/04-rules-engine.md` now have full acceptance criteria, listed design decisions and, for 03, the questions about the owner's bank format. SET: REQ-CSV and RULE-01/03–06/08/09/11/12/13 stay `draft` until approved.
 - 2026-10-26 v0.4.12 — REQ-CAP-07 (duplicate warning) built, widened from "the trip" to "the grant" and to pasted messages; new REQ-CAP-17 (payee autocomplete and a payee list in Settings with rename and remove), built. Both prompted by the owner adding the same invoice twice with no warning, and by a misspelt payee that would otherwise be suggested for ever.
 - 2026-10-26 v0.4.11 — Reproduced the owner's stuck phone and laptop: a device that held release A and received B (updates wait for a tap) stayed on A for ever, because A's page has no update bar. Service workers now ask open pages whether they can offer an update and take over at once when none can; verified by simulating A→B, A→C and A→B→C against real builds. Settings shows the build and has "Refresh app files". One extra reload is still needed to leave the stuck state.
