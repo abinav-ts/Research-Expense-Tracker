@@ -1,6 +1,7 @@
 // Every read/write of researcher data goes through here. Writes that fail (quota, blocked DB) become a StorageError
 // with a message the UI shows; nothing fails silently (REQ-CAP-11).
 import { payeeKey } from '../../shared/categoriser.ts';
+import { learnAnchors, type Anchor } from '../../shared/learn.ts';
 import { checkFile, TOO_LARGE_NOTE } from '../../shared/files.ts';
 import { defaultRules, normaliseRules } from '../../shared/grant.ts';
 import type { ExpenseFields } from '../../shared/expense-form.ts';
@@ -52,7 +53,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
       throw new StorageError();
     }
   }
-  const allTables = [db.grants, db.trips, db.expenses, db.grantDocs, db.inbox, db.blobs, db.payeeCategories, db.meta];
+  const allTables = [db.grants, db.trips, db.expenses, db.grantDocs, db.inbox, db.blobs, db.payeeCategories, db.meta, db.payees, db.anchors];
 
   async function putBlob(blob: Blob): Promise<string> {
     const id = newId();
@@ -60,9 +61,30 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
     return id;
   }
 
-  async function rememberPayee(payee: string, categoryId: CategoryId | undefined): Promise<void> {
+  /** Remembers the payee's spelling (REQ-CAP-16) and, when a category was chosen, the category (REQ-CAP-14). */
+  async function rememberPayee(payee: string, categoryId: CategoryId | undefined, bump = true): Promise<void> {
     const key = payeeKey(payee);
-    if (key && categoryId) await db.payeeCategories.put({ payeeKey: key, categoryId, updatedAt: now() });
+    if (!key) return;
+    const known = await db.payees.get(key);
+    await db.payees.put({ key, name: payee.trim(), count: (known?.count ?? 0) + (bump ? 1 : 0), updatedAt: now() });
+    if (categoryId) await db.payeeCategories.put({ payeeKey: key, categoryId, updatedAt: now() });
+  }
+
+  /** Stores the words around the confirmed values of a text (never the values themselves). */
+  async function learnFormat(text: string | undefined, fields: ExpenseFields): Promise<void> {
+    if (!text) return;
+    const drafts = learnAnchors(text, {
+      payee: fields.payee,
+      ...(fields.reference && { reference: fields.reference }),
+      amountMinor: fields.originalMinor,
+      currency: fields.originalCurrency,
+      date: fields.date,
+    });
+    for (const d of drafts) {
+      const id = `${d.field}|${d.before.join(' ')}|${d.after ?? ''}`;
+      const known = await db.anchors.get(id);
+      await db.anchors.put({ ...d, id, count: (known?.count ?? 0) + 1, updatedAt: now() });
+    }
   }
 
   async function tripExpenseBlobKeys(tripIds: string[]): Promise<{ expenseIds: string[]; blobKeys: string[] }> {
@@ -214,7 +236,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
         if (!existing) throw new Error('expense not found');
         const { note: _n, reference: _r, categoryId: _c, estimatedRateMicro: _e, ...rest } = existing;
         await db.expenses.put({ ...rest, ...fields, updatedAt: now() });
-        await rememberPayee(fields.payee, fields.categoryId);
+        await rememberPayee(fields.payee, fields.categoryId, false);
       });
     },
     async setExcluded(id: string, excluded: boolean): Promise<void> {
@@ -276,7 +298,8 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
       });
     },
     /** Confirming creates the Expense with the proof attached and removes the Inbox item. */
-    async confirmInboxItem(itemId: string, tripId: string, fields: ExpenseFields): Promise<Expense> {
+    /** `learnText`: the text the form was filled from (pasted SMS or text read from the image), used only to learn its layout. */
+    async confirmInboxItem(itemId: string, tripId: string, fields: ExpenseFields, learnText?: string): Promise<Expense> {
       const item = await db.inbox.get(itemId);
       if (!item) throw new StorageError('That Inbox item no longer exists.');
       const proofType: ProofType = item.proofType ?? (item.kind === 'text' ? 'card_alert' : 'other');
@@ -297,6 +320,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
           created = { id: newId(), tripId, ...fields, inrStatus: 'pending', source: 'proof', attachments: [attachment], excluded: false, createdAt: stamp, updatedAt: stamp };
           await db.expenses.add(created);
           await rememberPayee(fields.payee, fields.categoryId);
+          await learnFormat(learnText ?? (item.kind === 'text' ? item.text : undefined), fields);
           await db.meta.put({ key: 'lastTripId', value: tripId });
           await db.inbox.delete(itemId); // a file's blob now belongs to the expense
         }),
@@ -307,6 +331,24 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
     // ---- memory (REQ-CAP-14) and defaults ----
     async payeeMemory(): Promise<Map<string, CategoryId>> {
       return new Map((await db.payeeCategories.toArray()).map((r) => [r.payeeKey, r.categoryId]));
+    },
+    /** Payee spellings the user has saved, most-used first (REQ-CAP-16). */
+    async knownPayees(): Promise<string[]> {
+      return (await db.payees.orderBy('count').reverse().limit(300).toArray()).map((p) => p.name);
+    },
+    async anchors(): Promise<Anchor[]> {
+      return db.anchors.toArray();
+    },
+    async learningCounts(): Promise<{ payees: number; formats: number; categories: number }> {
+      return { payees: await db.payees.count(), formats: await db.anchors.count(), categories: await db.payeeCategories.count() };
+    },
+    /** "Forget what ExpRes has learned": spellings, message formats and payee categories. Saved expenses are untouched. */
+    async clearLearning(): Promise<void> {
+      await write(() => db.transaction('rw', [db.payees, db.anchors, db.payeeCategories], async () => {
+        await db.payees.clear();
+        await db.anchors.clear();
+        await db.payeeCategories.clear();
+      }));
     },
     async lastTripId(): Promise<string | undefined> {
       return (await db.meta.get('lastTripId'))?.value;

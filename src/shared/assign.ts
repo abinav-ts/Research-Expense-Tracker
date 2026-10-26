@@ -1,5 +1,5 @@
-// REQ-CAP-15: turn words the user tapped into a value for one form field. Pure, so every format a bank invents
-// can still be entered with a few taps.
+// Reads a short phrase as the value of one form field (amount, date, payee, reference). Used by learned message
+// formats (REQ-CAP-16) to turn the words found between remembered anchors into form values.
 import { currencyExponent } from './currency.ts';
 import { findDateInText } from './dates.ts';
 import { minorToText, parseAmount } from './money.ts';
@@ -7,22 +7,6 @@ import type { ExpenseFormInput } from './expense-form.ts';
 
 export type AssignField = 'amount' | 'date' | 'payee' | 'reference';
 export const ASSIGN_LABELS: Record<AssignField, string> = { amount: 'Amount', date: 'Date', payee: 'Payee', reference: 'Reference' };
-
-export interface Token {
-  /** Position in the token list (reading order). */
-  index: number;
-  text: string;
-}
-
-/** Splits text into tappable words. Whitespace separates words; punctuation stays attached ("spent@", "Rs.2,399.00"). */
-export function tokenize(text: string): Token[] {
-  return text.split(/\s+/).filter(Boolean).map((word, index) => ({ index, text: word }));
-}
-
-/** The selected words joined in reading order, whatever order they were tapped in. */
-export function selectionText(tokens: Token[], selected: ReadonlySet<number>): string {
-  return tokens.filter((t) => selected.has(t.index)).map((t) => t.text).join(' ');
-}
 
 export type AssignResult = { ok: true; patch: Partial<ExpenseFormInput>; message: string } | { ok: false; error: string };
 

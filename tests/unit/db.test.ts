@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRepo, StorageError } from '../../src/client/db/repo.ts';
 import { ExpResDb } from '../../src/client/db/schema.ts';
@@ -255,5 +256,91 @@ describe('REQ-CAP-02: selection order', () => {
     const repo = createRepo(db, { now: () => '2026-11-12T10:00:00.000Z' }); // a frozen clock: every stamp would tie
     await repo.addInboxFiles(['a', 'b', 'c', 'd', 'e'].map((n) => file(`${n}.png`, 'image/png')));
     expect((await db.inbox.orderBy('receivedAt').toArray()).map((i) => i.name)).toEqual(['a.png', 'b.png', 'c.png', 'd.png', 'e.png']);
+  });
+});
+
+describe('REQ-CAP-16: learning from confirmed expenses', () => {
+  async function withTrip() {
+    const f = fresh();
+    const grant = await f.repo.createGrant(grantFields);
+    const trip = await f.repo.createTrip(grant.id, tripFields);
+    return { ...f, trip };
+  }
+
+  it('REQ-CAP-16: saving an expense remembers the payee spelling, most-used first; editing it does not inflate the count', async () => {
+    const { repo, trip } = await withTrip();
+    const a = await repo.addExpense(trip.id, expenseFields({ payee: 'Sample Book House' }));
+    await repo.addExpense(trip.id, expenseFields({ payee: 'Sample Book House' }));
+    await repo.addExpense(trip.id, expenseFields({ payee: 'Other Shop' }));
+    await repo.updateExpense(a.id, expenseFields({ payee: 'Sample Book House', note: 'x' }));
+    expect(await repo.knownPayees()).toEqual(['Sample Book House', 'Other Shop']);
+    expect((await repo.learningCounts()).payees).toBe(2);
+  });
+
+  it('REQ-CAP-16: confirming from a text stores the words around the values, not the values', async () => {
+    const { db, repo, trip } = await withTrip();
+    const text = 'Txn: 2399 INR >> SHOP ONE << 25OCT26 Ref 34567';
+    const item = await repo.addInboxText(text);
+    await repo.confirmInboxItem(item.id, trip.id, expenseFields({ payee: 'SHOP ONE', originalMinor: 239_900, inrMinor: 239_900, date: '2026-10-25', reference: '34567' }));
+    const rows = await db.anchors.toArray();
+    expect(rows.map((r) => r.field).sort()).toEqual(['amount', 'date', 'payee', 'reference']);
+    const stored = JSON.stringify(rows).toLowerCase();
+    for (const secret of ['2399', 'shop', '25oct26', '34567', '2026-10-25']) expect(stored, secret).not.toContain(secret);
+    expect((await repo.anchors()).every((a) => a.count === 1)).toBe(true);
+  });
+
+  it('REQ-CAP-16: the same format confirmed again raises the count instead of adding rows', async () => {
+    const { db, repo, trip } = await withTrip();
+    for (const [text, payee] of [['Txn: 77 INR >> NEW PLACE << 02NOV26', 'NEW PLACE'], ['Txn: 99 INR >> LAST PLACE << 03NOV26', 'LAST PLACE']] as const) {
+      const item = await repo.addInboxText(text);
+      await repo.confirmInboxItem(item.id, trip.id, expenseFields({ payee }));
+    }
+    const payeeAnchors = (await db.anchors.toArray()).filter((a) => a.field === 'payee');
+    expect(payeeAnchors).toHaveLength(1);
+    expect(payeeAnchors[0]!.count).toBe(2);
+  });
+
+  it('REQ-CAP-16: text read from an image can be learned from too, when passed with the confirmation', async () => {
+    const { db, repo, trip } = await withTrip();
+    await repo.addInboxFiles([file('shot.png', 'image/png')]);
+    const [item] = await db.inbox.toArray();
+    await repo.confirmInboxItem(item!.id, trip.id, expenseFields({ payee: 'CAFE ABC' }), 'Paid to >> CAFE ABC << today');
+    expect((await db.anchors.toArray()).some((a) => a.field === 'payee')).toBe(true);
+  });
+
+  it('REQ-CAP-16: "Forget what ExpRes has learned" clears spellings, formats and payee categories but keeps every expense', async () => {
+    const { db, repo, trip } = await withTrip();
+    const item = await repo.addInboxText('Txn: 77 INR >> NEW PLACE << 02NOV26');
+    await repo.confirmInboxItem(item.id, trip.id, expenseFields({ payee: 'NEW PLACE', categoryId: 'meals' }));
+    expect(await repo.learningCounts()).toEqual({ payees: 1, formats: expect.any(Number), categories: 1 });
+    await repo.clearLearning();
+    expect(await repo.learningCounts()).toEqual({ payees: 0, formats: 0, categories: 0 });
+    expect(await repo.knownPayees()).toEqual([]);
+    expect(await db.expenses.count()).toBe(1);
+  });
+});
+
+describe('REQ-CAP-11: opening older data with a newer app version', () => {
+  it('REQ-CAP-11: a version-1 database keeps all its data when opened by the current app, and learns its payee spellings', async () => {
+    const name = `migrate-${++counter}`;
+    const old = new Dexie(name);
+    old.version(1).stores({ grants: 'id, updatedAt', trips: 'id, grantId', expenses: 'id, tripId, date', grantDocs: 'id, grantId', inbox: 'id, receivedAt', blobs: 'id', payeeCategories: 'payeeKey', meta: 'key' });
+    await old.open();
+    await old.table('grants').add({ id: 'g', name: 'Old grant', sponsor: '', currency: 'INR', totalMinor: 100, utilisedBeforeMinor: 0, startDate: '2026-01-01', endDate: '2026-12-31', rules: {}, createdAt: 'x', updatedAt: 'x' });
+    await old.table('expenses').bulkAdd([
+      { id: 'e1', tripId: 't', payee: 'Sample Book House', date: '2026-11-12', inrMinor: 100, updatedAt: 'a' },
+      { id: 'e2', tripId: 't', payee: 'sample book house', date: '2026-11-13', inrMinor: 200, updatedAt: 'b' },
+      { id: 'e3', tripId: 't', payee: 'Other Shop', date: '2026-11-14', inrMinor: 300, updatedAt: 'c' },
+    ]);
+    old.close();
+
+    const db = new ExpResDb(name);
+    opened.push(db);
+    await db.open();
+    expect(db.verno).toBe(2);
+    expect(await db.grants.count()).toBe(1);
+    expect(await db.expenses.count()).toBe(3);
+    const payees = (await db.payees.toArray()).sort((a, b) => b.count - a.count);
+    expect(payees.map((p) => [p.key, p.count])).toEqual([['sample book house', 2], ['other shop', 1]]);
   });
 });
