@@ -18,18 +18,6 @@ export interface ParsedTranscript {
   turns: Turn[];
 }
 
-// ---------- Claude Code /export ----------
-
-const PROMPT = /^(?:❯|>)(?: (.*))?$/;
-const ASSISTANT = /^[⏺●](?: (.*))?$/;
-const NOTE = /^[✻✶✽✢✳] .+/;
-const TOOL_HEAD = /^(?:[A-Z][A-Za-z]*\(|.+ \(MCP\))/;
-const TOOL_RESULT = /^\s*⎿/;
-
-export function looksLikeCodeExport(text: string): boolean {
-  return /^(?:❯|>) \S/m.test(text) && /^[⏺●]/m.test(text);
-}
-
 const trimBlank = (lines: string[]): string[] => {
   let a = 0;
   let b = lines.length;
@@ -38,10 +26,59 @@ const trimBlank = (lines: string[]): string[] => {
   return lines.slice(a, b);
 };
 
+// ---------- Claude Code /export ----------
+// What the file looks like: a banner, then for each turn a prompt line (❯ text, or ! command for a shell command) whose
+// wrapped lines are indented two spaces; replies start with ⏺ and are indented the same way; tool activity is collapsed into
+// lines such as "Ran 3 shell commands (ctrl+o to expand)"; tool output follows a ⎿ mark; ✻ and ※ lines are timing and recap notes.
+
+const PROMPT = /^(?:❯|>)(?: (.*))?$/;
+const SHELL = /^! .+/;
+const ASSISTANT = /^[⏺●](?: (.*))?$/;
+const NOTE = /^[✻✶✽✢✳※] .+/;
+const TOOL_HEAD = /^(?:[A-Z][A-Za-z]*\(|.+ \(MCP\))/;
+const RESULT = /^\s*⎿\s*(.*)$/;
+const SUMMARY = /^\s*(.*?)\s*\(ctrl\+o to expand\)\s*$/;
+const NOISE = /^\s*· summary\s*$/;
+
+export function looksLikeCodeExport(text: string): boolean {
+  return /^(?:❯|>) \S/m.test(text) && /^[⏺●]/m.test(text);
+}
+
+/** Splits one reply into prose, collapsed tool summaries and tool output. */
+function replyPieces(lines: string[]): Piece[] {
+  const pieces: Piece[] = [];
+  let buffer: string[] = [];
+  const flushText = () => {
+    const text = trimBlank(buffer);
+    buffer = [];
+    if (text.length === 0) return;
+    if (TOOL_HEAD.test(text[0]!)) pieces.push({ kind: 'tool', title: text[0]!, body: text.slice(1).join('\n') });
+    else pieces.push({ kind: 'md', text: text.join('\n') });
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const summary = SUMMARY.exec(line);
+    const result = RESULT.exec(line);
+    if (NOISE.test(line)) continue;
+    if (summary && !result) {
+      flushText();
+      pieces.push({ kind: 'note', text: summary[1]! });
+    } else if (result) {
+      flushText();
+      const output = [result[1]!];
+      while (i + 1 < lines.length && /^ {3,}\S/.test(lines[i + 1]!)) output.push(lines[++i]!.replace(/^ +/, ''));
+      pieces.push(output.length === 1 && output[0]!.length <= 120 ? { kind: 'note', text: output[0]! } : { kind: 'tool', title: 'Output', body: output.join('\n') });
+    } else buffer.push(line);
+  }
+  flushText();
+  return pieces;
+}
+
 export function parseCodeExport(raw: string): ParsedTranscript {
   const header: string[] = [];
   const turns: Turn[] = [];
-  let kind: 'header' | 'prompt' | 'assistant' = 'header';
+  let kind: 'header' | 'prompt' | 'reply' | 'note' = 'header';
   let current: string[] = [];
 
   const turn = (): Turn => {
@@ -53,30 +90,30 @@ export function parseCodeExport(raw: string): ParsedTranscript {
     current = [];
     if (lines.length === 0) return;
     if (kind === 'header') header.push(...lines);
-    else if (kind === 'prompt') turns.push({ prompt: lines.join('\n'), pieces: [] });
-    else if (TOOL_HEAD.test(lines[0]!) || lines.slice(1).some((l) => TOOL_RESULT.test(l))) {
-      turn().pieces.push({ kind: 'tool', title: lines[0]!, body: lines.slice(1).join('\n') });
-    } else turn().pieces.push({ kind: 'md', text: lines.join('\n') });
+    else if (kind === 'prompt') turns.push({ prompt: SHELL.test(lines[0]!) ? `\`\`\`\n${lines.join('\n')}\n\`\`\`` : lines.join('\n'), pieces: [] });
+    else if (kind === 'note') turn().pieces.push({ kind: 'note', text: lines.join(' ') });
+    else turn().pieces.push(...replyPieces(lines));
+  };
+  const start = (next: typeof kind, first: string) => {
+    flush();
+    kind = next;
+    current = [first];
   };
 
-  for (const line of raw.replace(/\r\n?/g, '\n').split('\n')) {
+  for (const rawLine of raw.replace(/\r\n?/g, '\n').split('\n')) {
+    const line = rawLine.replace(/\s+$/, ''); // the terminal pads wrapped lines with spaces
     const prompt = PROMPT.exec(line);
     const reply = ASSISTANT.exec(line);
-    if (prompt) {
-      flush();
-      kind = 'prompt';
-      current = [prompt[1] ?? ''];
-    } else if (reply) {
-      flush();
-      kind = 'assistant';
-      current = [reply[1] ?? ''];
-    } else if (NOTE.test(line)) {
-      flush();
-      if (kind !== 'header') turn().pieces.push({ kind: 'note', text: line });
-      else header.push(line);
-      current = [];
-    } else {
-      current.push(kind === 'header' ? line : line.replace(/^ {1,2}/, ''));
+    if (prompt) start('prompt', prompt[1] ?? '');
+    else if (SHELL.test(line)) start('prompt', line);
+    else if (reply) start('reply', reply[1] ?? '');
+    else if (NOTE.test(line)) start('note', line);
+    else if (kind === 'header') current.push(line);
+    else {
+      const inner = line.replace(/^ {1,2}/, '');
+      // Output of a command, or a collapsed tool summary, directly under a prompt belongs to the reply, not to the prompt.
+      if (kind === 'prompt' && (RESULT.test(inner) || SUMMARY.test(inner))) start('reply', inner);
+      else current.push(inner);
     }
   }
   flush();
@@ -88,9 +125,24 @@ export function parseCodeExport(raw: string): ParsedTranscript {
 const USER_NAMES = ['user', 'human', 'you', 'me', 'prompt'];
 const CLAUDE_NAMES = ['assistant', 'claude', 'cowork', 'ai', 'response'];
 const NAMES = [...USER_NAMES, ...CLAUDE_NAMES].join('|');
-// "## User", "**User:**", "User:", "### Human:" … alone on a line or followed by the first words of the message.
-const SPEAKER = new RegExp(`^(?:#{1,6}\\s*)?(?:\\*\\*|__)?(${NAMES})(?![\\w'’])(?:\\s*:)?(?:\\*\\*|__)?\\s*:?\\s*(.*)$`, 'i');
+// Three label styles, so that an ordinary sentence or a document title is never taken for one:
+//   "## User" / "### Human:"        a heading with nothing else on the line
+//   "**User:** first words"          bold, the message may continue on the same line
+//   "User: first words"              a plain label, the colon is required
+const SPEAKER_STYLES = [
+  new RegExp(`^#{1,6}\\s*(${NAMES})\\s*:?\\s*$`, 'i'),
+  new RegExp(`^(?:\\*\\*|__)(${NAMES})\\s*:?\\s*(?:\\*\\*|__)\\s*:?\\s*(.*)$`, 'i'),
+  new RegExp(`^(${NAMES})\\s*:\\s*(.*)$`, 'i'),
+];
 const TURN_HEADING = /^#{1,6}\s*turn\s+\d+\s*$/i;
+
+function speakerLabel(line: string): { name: string; rest: string } | undefined {
+  for (const style of SPEAKER_STYLES) {
+    const m = style.exec(line.trim());
+    if (m) return { name: m[1]!.toLowerCase(), rest: m[2] ?? '' };
+  }
+  return undefined;
+}
 
 export function parseChat(raw: string): ParsedTranscript {
   const turns: Turn[] = [];
@@ -112,14 +164,12 @@ export function parseChat(raw: string): ParsedTranscript {
 
   for (const line of raw.replace(/\r\n?/g, '\n').split('\n')) {
     if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
-    const label = inFence ? null : SPEAKER.exec(line.trim());
-    // A label has to stand alone or be formatted (heading, bold, colon); a sentence that merely begins with "You" is not one.
-    const formatted = label && (/^#{1,6}/.test(line.trim()) || /^(\*\*|__)/.test(line.trim()) || /^\w+\s*:/.test(line.trim()));
+    const label = inFence ? undefined : speakerLabel(line);
     if (!inFence && TURN_HEADING.test(line.trim())) continue;
-    if (label && formatted) {
+    if (label) {
       flush();
-      speaker = USER_NAMES.includes(label[1]!.toLowerCase()) ? 'user' : 'claude';
-      current = label[2] ? [label[2]] : [];
+      speaker = USER_NAMES.includes(label.name) ? 'user' : 'claude';
+      current = label.rest ? [label.rest] : [];
     } else if (speaker) current.push(line);
     else preface.push(line);
   }
@@ -144,7 +194,12 @@ function shorten(body: string): string {
 function previewOf(pieces: Piece[]): string {
   const first = pieces.find((p): p is Extract<Piece, { kind: 'md' }> => p.kind === 'md');
   if (!first) return '';
-  const plain = first.text.replace(/[`*_#>~|[\]]/g, '').replace(/\s+/g, ' ').trim();
+  const lines = first.text
+    .replace(/(```|~~~)[\s\S]*?(\1|$)/g, ' ')
+    .split('\n')
+    .map((l) => l.replace(/[`*_#>~|[\]]/g, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const plain = lines[0] && lines[0].length < 25 && lines[1] ? `${lines[0]} ${lines[1]}` : (lines[0] ?? '');
   return plain.length > 110 ? `${plain.slice(0, 110)}…` : plain;
 }
 
@@ -155,17 +210,25 @@ function pieceHtml(piece: Piece): string {
   return `<details class="tool"><summary><code>${escapeHtml(piece.title)}</code></summary>${body}</details>`;
 }
 
-export function turnHtml(turn: Turn, id: string, label: string): string {
+/** `lineBreaks`: keep a typed prompt's own line breaks (a chat); a terminal export wraps lines itself, so it is off there. */
+export function turnHtml(turn: Turn, id: string, label: string, lineBreaks: boolean): string {
   const prompt = turn.prompt
-    ? `<div class="prompt"><div class="who">You</div>${renderMarkdown(turn.prompt, { lineBreaks: true }).html}</div>`
+    ? `<div class="prompt"><div class="who">You</div>${renderMarkdown(turn.prompt, { lineBreaks }).html}</div>`
     : '';
-  const tools = turn.pieces.filter((p) => p.kind === 'tool').length;
-  const meta = tools ? `<span class="meta">${tools} tool call${tools === 1 ? '' : 's'}</span>` : '';
+  const tools = turn.pieces.filter((p) => p.kind === 'tool' || (p.kind === 'note' && !p.text.startsWith('✻') && !p.text.startsWith('※'))).length;
+  const meta = tools ? `<span class="meta">${tools} tool step${tools === 1 ? '' : 's'}</span>` : '';
   const response = turn.pieces.length
     ? `<details class="response"><summary><span class="who">Claude</span><span class="preview">${escapeHtml(previewOf(turn.pieces))}</span>${meta}</summary>` +
       `<div class="response-body">${turn.pieces.map(pieceHtml).join('\n')}</div></details>`
     : '<p class="note">(no response recorded)</p>';
   return `<section class="turn" id="${id}"><h3 class="turn-head"><a href="#${id}">${escapeHtml(label)}</a></h3>${prompt}${response}</section>`;
+}
+
+/** Whatever came before the first turn: the Claude Code banner, or a title and notes above a pasted chat. */
+export function headerHtml(parsed: ParsedTranscript): string {
+  if (!parsed.header.trim()) return '';
+  if (parsed.format === 'code') return `<details class="tool"><summary>Session header</summary><pre>${escapeHtml(parsed.header)}</pre></details>`;
+  return `<div class="md">${renderMarkdown(parsed.header).html}</div>`;
 }
 
 export function unlabelledHtml(raw: string, asMarkdown: boolean): string {

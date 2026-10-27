@@ -22,6 +22,7 @@
     "db:local": "wrangler d1 migrations apply DB --local",
     "icons": "node scripts/make-icons.ts",
     "fixtures": "node scripts/make-fixtures.ts",
+    "docs": "node scripts/build-docs.ts",
     "deploy": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy"
   },
   "dependencies": {

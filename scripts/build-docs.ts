@@ -12,7 +12,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { escapeHtml, renderMarkdown } from './docs/markdown.ts';
 import { page, STYLES } from './docs/page.ts';
 import { findSuspects, scrub, type ScrubCounts, type Suspect } from './docs/scrub.ts';
-import { parseTranscript, turnHtml, unlabelledHtml } from './docs/transcript.ts';
+import { headerHtml, parseTranscript, turnHtml, unlabelledHtml } from './docs/transcript.ts';
 
 const root = join(import.meta.dirname, '..');
 const srcDir = join(root, 'docs-src');
@@ -20,12 +20,17 @@ const outDir = join(root, 'docs');
 const assetsDir = join(outDir, 'assets');
 
 const PARTS = [
-  { id: 'cowork', file: 'cowork', title: 'Part 1 · Claude Cowork', blurb: 'The Claude Cowork conversation.' },
+  {
+    id: 'cowork',
+    file: 'cowork',
+    title: 'Part 1 · Claude Cowork',
+    blurb: 'The Claude Cowork conversation: the idea, the specification, the plan and the first brand designs.',
+  },
   {
     id: 'code-m0',
     file: 'code-m0',
-    title: 'Part 2 · Claude Code, Milestone M0',
-    blurb: 'The Claude Code session for Milestone M0, the walking skeleton defined in PLAN.md.',
+    title: 'Part 2 · Claude Code',
+    blurb: 'The Claude Code session that built ExpRes: Milestone M0 (the walking skeleton defined in PLAN.md) first, then the later milestones.',
   },
 ];
 
@@ -105,7 +110,7 @@ function buildTranscripts(counts: ScrubCounts): { summary: string[]; suspects: {
       body = `<p class="note">No speaker labels were found in this file, so it is shown as one document.</p>${unlabelledHtml(text, !path.endsWith('.txt'))}`;
       detail = 'no turns detected, shown as one document';
     } else {
-      body = parsed.turns.map((t, i) => turnHtml(t, `${part.id}-${i + 1}`, `Turn ${i + 1}`)).join('\n');
+      body = headerHtml(parsed) + parsed.turns.map((t, i) => turnHtml(t, `${part.id}-${i + 1}`, `Turn ${i + 1}`, parsed.format === 'chat')).join('\n');
       detail = `${parsed.turns.length} turns (${parsed.format} format)`;
     }
     sections.push(`${head}<p>${escapeHtml(part.blurb)}</p><p class="part-count">${escapeHtml(detail)}</p>${body}`);
@@ -117,7 +122,7 @@ function buildTranscripts(counts: ScrubCounts): { summary: string[]; suspects: {
     join(outDir, 'transcript.html'),
     page({
       title: 'Transcripts · ExpRes',
-      description: 'The two conversations behind ExpRes: the Claude Cowork conversation and the Claude Code session for Milestone M0.',
+      description: 'The two conversations behind ExpRes: the Claude Cowork conversation and the Claude Code session that built the app.',
       nav: 'transcript',
       wide: true,
       body:
@@ -145,7 +150,7 @@ function buildIndex(): void {
         '<p class="lead">ExpRes is a privacy-first, offline-capable web app for tracking and claiming conference-grant expenses. These pages hold the material for its viva.</p>' +
         '<div class="cards">' +
         '<a class="card" href="viva-sheet.html"><h2>Viva sheet</h2><p>The idea, the stack, the on-device OCR and how it was made robust, the decisions along the way, and likely questions.</p><p class="go">Read the sheet →</p></a>' +
-        '<a class="card" href="transcript.html"><h2>Transcripts</h2><p>Part 1: the Claude Cowork conversation. Part 2: the Claude Code session for Milestone M0.</p><p class="go">Read the transcripts →</p></a>' +
+        '<a class="card" href="transcript.html"><h2>Transcripts</h2><p>Part 1: the Claude Cowork conversation. Part 2: the Claude Code session that built the app, starting with Milestone M0.</p><p class="go">Read the transcripts →</p></a>' +
         '</div>',
     }),
   );

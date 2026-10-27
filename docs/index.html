@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="description" content="Viva sheet and conversation transcripts for ExpRes, a privacy-first, offline-capable app for tracking and claiming conference-grant expenses.">
+<title>ExpRes · viva documents</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><span class="site-name">ExpRes · viva documents</span><nav aria-label="Pages"><a href="index.html" aria-current="page">Home</a><a href="viva-sheet.html">Viva sheet</a><a href="transcript.html">Transcripts</a></nav></div></header>
+<main class="wrap">
+<h1>ExpRes: viva documents</h1><p class="lead">ExpRes is a privacy-first, offline-capable web app for tracking and claiming conference-grant expenses. These pages hold the material for its viva.</p><div class="cards"><a class="card" href="viva-sheet.html"><h2>Viva sheet</h2><p>The idea, the stack, the on-device OCR and how it was made robust, the decisions along the way, and likely questions.</p><p class="go">Read the sheet →</p></a><a class="card" href="transcript.html"><h2>Transcripts</h2><p>Part 1: the Claude Cowork conversation. Part 2: the Claude Code session that built the app, starting with Milestone M0.</p><p class="go">Read the transcripts →</p></a></div>
+</main>
+<script>
+(function(){
+  function setAll(open){document.querySelectorAll('details.response').forEach(function(d){d.open=open})}
+  document.querySelectorAll('[data-expand]').forEach(function(b){b.addEventListener('click',function(){setAll(b.getAttribute('data-expand')==='all')})});
+  function reveal(){
+    var id=decodeURIComponent(location.hash.slice(1));
+    var el=id&&document.getElementById(id);
+    for(var n=el;n;n=n.parentElement){if(n.tagName==='DETAILS')n.open=true}
+    if(el)el.scrollIntoView();
+  }
+  addEventListener('hashchange',reveal);reveal();
+})();
+</script>
+</body>
+</html>

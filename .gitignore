@@ -9,5 +9,8 @@ test-results/
 worker-configuration.d.ts
 public/ocr/
 
+# Raw conversation transcripts for the viva pages: only the scrubbed pages in docs/ are published
+docs-src/transcripts/
+
 # Claude Code personal settings
 .claude/settings.local.json

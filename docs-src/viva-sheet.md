@@ -2,13 +2,15 @@
 
 *Research Expense Tracker · prepared 27 October 2026 · specification v0.6.5. Written from the repository (SPEC.md, the sub-specs, the changelog and the git log). The test numbers come from a run on 27 October.*
 
+*Live app: https://expres.abinav-ts2006.workers.dev · a built-in sample claim for the reviewer view is at `/review/sample` on the same site.*
+
 ## 1. The idea in 60 seconds
 
 A researcher on a grant has to prove conference-travel spending to the granting authority. Today they hand over whole bank statements, which exposes unrelated personal spending. The proof is put together weeks later from memory, and while travelling they do not know how much of the grant is left.
 
 **ExpRes** is a web app that fixes this in two segments:
 
-- **Live tracking (Segment A).** During the trip you add proof of each expense: a UPI "payment successful" screenshot, a card SMS, an invoice or a ticket. The phone reads the proof on the device (OCR), suggests the amount, date, payee and category, and you confirm. A balance gauge shows what is left of the grant, with confirmed and still-to-be-verified amounts kept apart.
+- **Live tracking (Segment A).** During the trip you add proof of each expense: a UPI "payment successful" screenshot, a card SMS, an invoice or a ticket. The app reads the proof on the device (OCR), suggests the amount, date, payee and category, and you confirm. A balance gauge shows what is left of the grant, with confirmed and still-to-be-verified amounts kept apart.
 - **Statement claim (Segment B).** After the trip you load your bank-statement CSV. The app matches your tracked expenses to their statement debits, because the authority accepts the **statement INR debit** as the claimed amount. You can tick other relevant rows, and rows you do not choose never leave the device.
 
 Both segments produce one **claim pack**: a PDF plus a private review link that shows *only* the selected items. The grant officer opens the link and approves or rejects each item.
@@ -62,7 +64,7 @@ Researcher's device (works offline)                   Cloudflare (free plan)
 
 What leaves the device, and when:
 
-- **Before Submit: nothing.** There are no analytics, no CDNs, no external fonts and no OCR service. A test checks that the client makes no third-party requests (REQ-PRIV-05).
+- **Before Submit: nothing.** There are no analytics, no CDNs, no external fonts and no OCR service. A browser test follows a claim from a new grant to the PDF and checks that every request goes to our own server and that none carries data (REQ-PRIV-01, -05).
 - **At Submit: only the selected claim items** and their attachments, plus the claimant, grant and trip fields shown in the preview. For statement evidence only the chosen rows' date, narration, debit and reference are sent. The balance column, the account number and every other row stay behind (REQ-PRIV-02).
 - **Images are re-encoded before sending**, so camera metadata such as location is dropped (REQ-PRIV-04).
 
@@ -75,7 +77,7 @@ The stack was fixed up front (SPEC §5.1) for a first-time web developer: one la
 | Language | TypeScript 7 everywhere | One language; types shared by client and server | |
 | Client | React 19, Vite 8, React Router, Tailwind 4 | The most documented combination, so the easiest to get right | Next.js: server-component complexity and a weaker offline story |
 | Offline | `vite-plugin-pwa` (Workbox) with a custom service worker | Offline cache and the share-target in one place | |
-| Local data | Dexie 4 over IndexedDB | Structured data and image blobs, offline | `localStorage`: too small, no blobs |
+| Local data | Dexie 4 over IndexedDB | Structured data and image blobs, offline | |
 | OCR | Tesseract.js 7, assets self-hosted | On-device, offline, no keys | A cloud OCR or LLM: breaks the privacy rule |
 | CSV | Papa Parse | Robust in-browser parsing | |
 | PDF | jsPDF + autotable | Built on the device, so it works offline | |
@@ -140,7 +142,7 @@ learn                 remember payee spellings and the words around values, on t
 |---|---|---|
 | Web Worker | Recognition runs off the page's main thread, with a "Reading screenshot…" indicator and a two-minute stop | The page stays responsive; a stuck read cannot hang the app |
 | Self-hosted assets | The worker, the WebAssembly core and the English model (about 15 MB in the build, about 7 MB downloaded per device) come from our own origin and are cached in the background after the first load | Recognition works offline later (REQ-OFF-05) and no third party sees a request |
-| Core selection | `wasm-feature-detect` picks the relaxed-SIMD, SIMD or plain core for the device | Fast where possible, working everywhere |
+| Core selection | Tesseract.js picks the relaxed-SIMD, SIMD or plain WebAssembly core for the device; our caching code makes the same choice (with `wasm-feature-detect`) so it stores the right file | Fast where possible, working everywhere, and the offline cache holds the file that will actually be used |
 | Image preparation | Contrast stretch, then a **Sauvola local threshold** with a window about 1/14 of the image width | A photographed receipt has shadows and creases, where one global brightness cut-off fails. If preparation fails, the original image is read instead |
 | Two layout passes | "Automatic" finds blocks and columns; "sparse" finds scattered lines | Receipts and screenshots sometimes lose lines under automatic layout |
 | Scrub | Card digits, available-limit and balance figures are removed **before** anything is kept or suggested | They must never be stored or sent (REQ-CAP-13) |
@@ -212,7 +214,7 @@ The rounds, from the changelog:
 | When | Input | What happened | What changed |
 |---|---|---|---|
 | 26 Oct, v0.4.3 | **Real** bank SMS | The parser, written against invented text, missed the payee after `@`, dates with no separators (`25OCT26`), short references, and **left a balance figure in the stored text**, which is a privacy defect | Parser widened; balances, limits and card digits are scrubbed before saving |
-| 26 Oct, v0.4.4 | Design review | Banks' formats cannot all be anticipated, and sending text to a model would break the privacy rule | Decided on on-device suggestions and learning (REQ-CAP-15, -16) |
+| 26 Oct, v0.4.4 | Design review | Banks' formats cannot all be anticipated, and sending text to a model would break the privacy rule | Decided that the user assists the reader (first tap-the-words, later suggestions) and that the app learns from corrections, all on the device (REQ-CAP-15, -16) |
 | 26 Oct, v0.4.5 | Fake screenshots through real OCR | Tesseract drops the ₹ sign | A lone money-formatted number is accepted when no marked amount exists |
 | 26 Oct, v0.4.6 to 0.4.7 | **Real** photographed receipt | The first design (tap the words you want) showed hundreds of words and was more work than paper. OCR read `560.00` as `60.00` and "August" as "hugust", and lost the shop name | Replaced by up to three ranked suggestions per field. Added image preparation, fuzzy month names, look-alike repair and payee-spelling memory. The total, shop, date and invoice number now came out. A synthetic degraded receipt replaced the real one in tests |
 | 26 Oct, v0.4.8 | **My device** | A read failed without saying why | A red warning with the reason and a "Try again" button; a stuck read stops after two minutes |
@@ -245,7 +247,7 @@ The pattern worth saying aloud: **synthetic data proves the logic; real data fin
 
 ## 11. How it was built
 
-**Spec-driven, with two tools.** Claude chat (Cowork) was used to discuss and write the specification; **Claude Code** wrote the code. `CLAUDE.md` is the standing brief for Claude Code, and it sets the rules:
+**Spec-driven, with two tools.** Claude chat and Cowork were used to discuss and write the specification and the design (the final logo and palette came out of a Cowork session); **Claude Code** wrote the code. `CLAUDE.md` is the standing brief for Claude Code, and it sets the rules:
 
 - No code without a requirement. If something needed is not specified, stop and propose a spec edit with a changelog line.
 - If code and spec disagree, fix the spec first, in a visible diff.
@@ -257,7 +259,7 @@ The pattern worth saying aloud: **synthetic data proves the logic; real data fin
 
 **Traceability.** `npm run trace` reads the MUST list from the spec and checks that each one has a test citing its ID. It fails if a requirement marked built has no test, or if a test cites an ID that is not in the spec. `--strict` is the final gate.
 
-**My part** was the decisions (hosting, currency scope, the claim-amount rule, proof types), answering the design questions on 26 October, trying every milestone on real devices and with real documents, and the change requests recorded as v0.6.3 to v0.6.5.
+**My part** was the decisions (hosting, currency scope, the claim-amount rule, proof types), answering the design questions on 26 October, trying the app on real devices and with real documents, and the change requests recorded as v0.6.3 to v0.6.5.
 
 **Timeline** (commit times, local):
 
@@ -271,7 +273,7 @@ The pattern worth saying aloud: **synthetic data proves the logic; real data fin
 | Mon 26 Oct, 20:48 to 21:14 | Statement hardening; M3 spec and claim server |
 | Tue 27 Oct, 03:22 | M3: claim page, PDF, submit, reviewer and owner pages, sample claim |
 | Tue 27 Oct, 03:40 to 11:06 | M4: offline indicator, install button; browser tests pass on Chromium and WebKit; strict trace green |
-| Tue 27 Oct, 13:00 to 13:21 | My change requests: cash-only expense button, final brand, "Back to…" links and box-shaped links, statement drafts with one Confirm |
+| Tue 27 Oct, 13:00 to 13:21 | Cash-only expense button, the final brand from the Cowork session, "Back to…" links and box-shaped links, statement drafts with one Confirm |
 
 **Plan against actual.** The plan set the final deploy for Monday 26 October at 22:00. The M4 commit with the strict trace green is Tuesday 11:06, so the schedule ran about half a day over. All 67 MUST requirements have tests; what stayed unbuilt are 21 SHOULD and COULD requirements (see section 13).
 
@@ -284,7 +286,7 @@ The pattern worth saying aloud: **synthetic data proves the logic; real data fin
 | Browser tests | 203 test cases in 23 files, run on Chromium and WebKit | Last recorded passing run is commit `2ac567b`; not re-run for this sheet |
 | Requirements marked `built` | 86 (68 in the sub-specs, 18 in the cross-cutting sections) | The spec files |
 | Requirements marked `verified` | **0**: that status needs a manual check on a real device | The spec files |
-| Tests about recognition | 78 (63 unit, 15 browser) | `receipt-parser`, `suggest`, `dates`, `image-prep`, `learn`, `ocr.smoke` |
+| Tests on recognition and its helpers | 78 (63 unit, 15 browser) | `receipt-parser`, `suggest`, `dates`, `image-prep`, `learn`, `ocr.smoke` |
 | Tests about statement reading | 61 unit tests on parsing and column mapping, plus reconcile and plan tests | `statement-parse`, `statement-map`, `statement-robust` |
 | Size | About 8,500 lines of TypeScript in `src/`, about 7,500 lines of tests | `wc -l` |
 | History | 35 commits, 25 to 27 October 2026 | `git log` |
@@ -300,13 +302,13 @@ Said plainly, because an examiner will ask:
 - **Submit needs a connection.** There is no outbox yet (REQ-OFF-04).
 - **No passcode on a review link** (D-5): whoever holds the link can review.
 - **The declaration wording is generic** until the real authority's wording is supplied (D-4).
-- **Not built, by priority:** supporting documents on an existing expense (CAP-08), image compression at capture (CAP-10), editing grant rules in the interface (SET-04), several trips per grant in the interface (SET-05), per-category cap bars (BAL-03), CSV export of claim items (CLM-05), immutable claims with revisions (CLM-06), the reviewer's PDF download (REV-06), keeping a statement on the device (CSV-11), blacking out parts of a screenshot (PRIV-06).
+- **Not built** (21 SHOULD and COULD requirements are still agreed or draft), for example: supporting documents on an existing expense (CAP-08), image compression at capture (CAP-10), editing grant rules in the interface (SET-04), per-category cap bars (BAL-03), CSV export of claim items (CLM-05), immutable claims with revisions (CLM-06), the reviewer's PDF download (REV-06), keeping a statement on the device (CSV-11), and blacking out parts of a screenshot (PRIV-06).
 - **Future work named in the spec:** bank or Account-Aggregator integration, real accounts and institutions, native apps, syncing across devices.
 
 ## 14. Likely questions
 
 **Why not simply send the whole statement, as people do now?**
-Because it exposes unrelated personal spending. ExpRes sends only the selected rows' date, narration, debit and reference. Everything else stays on the device, and a test inspects the submit payload to prove it.
+Because it exposes unrelated personal spending. ExpRes sends only the selected rows' date, narration, debit and reference. Everything else stays on the device, and a browser test inspects the Submit request to prove it (REQ-PRIV-02).
 
 **Why is the claim amount the bank debit and not the receipt?**
 It is the authority's rule, and the debit is third-party evidence. A proof only gives an estimate, so until a bank-paid expense is matched to a statement row it is labelled *pending verification* and cannot be claimed.

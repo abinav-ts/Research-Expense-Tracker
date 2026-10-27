@@ -14,6 +14,7 @@ const RULES: { name: string; pattern: RegExp; replacement: string }[] = [
   },
   { name: 'session id', pattern: /\b(?:cse|session)_[0-9A-Za-z]{20,}/g, replacement: '[REDACTED_SESSION_ID]' },
   { name: 'email address', pattern: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, replacement: '[REDACTED_EMAIL]' },
+  { name: 'account id (32 hex)', pattern: /\b[0-9a-f]{32}\b/g, replacement: '[REDACTED_ID]' },
   { name: 'scratch path', pattern: /\/private\/tmp\/claude-\d+\/[^\s'")]*/g, replacement: '[scratch]' },
   { name: 'home folder', pattern: /\/Users\/abinavts/g, replacement: '~' },
 ];
@@ -48,13 +49,14 @@ export interface Suspect {
 }
 
 export function findSuspects(text: string): Suspect[] {
-  const found: Suspect[] = [];
+  // Keyed by position: when two patterns hit the same text the later, more specific one wins (a mobile number is also a long number).
+  const found = new Map<number, Suspect>();
   for (const { label, pattern } of SUSPECTS) {
     for (const m of text.matchAll(pattern)) {
       const at = m.index ?? 0;
       const context = text.slice(Math.max(0, at - 30), at + m[0].length + 30).replace(/\s+/g, ' ');
-      found.push({ label, match: m[0], context });
+      found.set(at, { label, match: m[0], context });
     }
   }
-  return found;
+  return [...found].sort((a, b) => a[0] - b[0]).map(([, suspect]) => suspect);
 }
