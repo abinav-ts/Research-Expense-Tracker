@@ -18,7 +18,7 @@
         transition: opacity 150ms ease-out;
       }
       #ex-loading.ex-leaving { animation: none; opacity: 0; }
-      #ex-loading .ex-loading-mark { width: 144px; height: auto; display: block; margin: 0 auto 16px; }
+      #ex-loading .ex-loading-mark { width: 128px; height: auto; display: block; margin: 0 auto 16px; }
       #ex-loading .ex-loading-word {
         margin: 0; font: 500 40px/44px var(--ex-font-display); letter-spacing: -0.035em;
       }
@@ -28,14 +28,10 @@
         position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
       }
       @keyframes ex-show { to { opacity: 1; } }
-      @keyframes ex-draw { 0% { stroke-dashoffset: 320; } 60%, 100% { stroke-dashoffset: 0; } }
-      @keyframes ex-glide { 0% { translate: -16px 0; opacity: 0; } 50%, 100% { translate: 0 0; opacity: 1; } }
+      @keyframes ex-glide { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
       @media (prefers-reduced-motion: no-preference) {
-        /* Mark paths in order: paper, fold, text lines, streaks; the <g> is the rupee. */
-        #ex-loading .ex-loading-mark > path:nth-of-type(4) {
-          stroke-dasharray: 320; animation: ex-draw 1.6s ease-out infinite;
-        }
-        #ex-loading .ex-loading-mark > g { animation: ex-glide 1.6s ease-out infinite; }
+        /* The mark is the Mandelbrot set; its one <g> is the cut-out rupee, which breathes. */
+        #ex-loading .ex-loading-mark > g { animation: ex-glide 1.6s ease-in-out infinite; }
       }
     </style>
   </head>
@@ -44,7 +40,7 @@
       <div>
         <!--brand:loading-mark-->
         <p class="ex-loading-word" aria-hidden="true">Exp<b>Res</b></p>
-        <p class="ex-loading-slogan">Breeze through grant-handling grunt work</p>
+        <p class="ex-loading-slogan">Breeze through the grunt work of managing conference grant claims</p>
         <span class="ex-sr">Loading ExpRes</span>
       </div>
     </div>

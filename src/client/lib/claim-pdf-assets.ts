@@ -35,10 +35,10 @@ export async function pdfLogo(): Promise<PdfImage | undefined> {
     img.src = markLight;
     await img.decode();
     const canvas = document.createElement('canvas');
-    canvas.width = 160;
+    canvas.width = 120;
     canvas.height = 120;
-    canvas.getContext('2d')!.drawImage(img, 0, 0, 160, 120);
-    return { dataUrl: canvas.toDataURL('image/png'), format: 'PNG', width: 160, height: 120 };
+    canvas.getContext('2d')!.drawImage(img, 0, 0, 120, 120);
+    return { dataUrl: canvas.toDataURL('image/png'), format: 'PNG', width: 120, height: 120 };
   } catch {
     return undefined;
   }

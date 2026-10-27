@@ -1,10 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" role="img" aria-label="ExpRes">
-  <path d="M38 14 H78 L102 38 V98 A8 8 0 0 1 94 106 H38 A8 8 0 0 1 30 98 V22 A8 8 0 0 1 38 14 Z" fill="#0E2A3B" stroke="#EAF4F3" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M78 14 V30 A8 8 0 0 0 86 38 H102" fill="none" stroke="#EAF4F3" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M42 30 H66 M42 40 H58" fill="none" stroke="#7FA3B2" stroke-width="4" stroke-linecap="round"/>
-  <path d="M16 52 H100 M30 66 H92 M18 78 C8 78 8 90 16 90 H108" fill="none" stroke="#2BB3A9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-  <g transform="translate(108 28) skewX(-10)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M0 4 H40 M0 16 H40 M8 4 H22 A14 14 0 0 1 22 32 H8 M8 32 L30 62" stroke="#0E2A3B" stroke-width="15"/>
-    <path d="M0 4 H40 M0 16 H40 M8 4 H22 A14 14 0 0 1 22 32 H8 M8 32 L30 62" stroke="#FFB020" stroke-width="7"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 4 112 112" role="img" aria-label="ExpRes">
+  <path d="M101.0 60.0 L101.1 60.0 L101.3 60.0 L101.6 59.9 L102.1 59.7 L102.7 59.4 L103.4 58.9 L104.1 58.4 L104.9 57.6 L105.6 56.6 L106.4 55.5 L107.1 54.2 L107.6 52.6 L108.1 50.9 L108.4 49.0 L108.5 47.0 L108.4 44.9 L108.0 42.6 L107.4 40.3 L106.5 37.9 L105.3 35.6 L103.8 33.3 L102.0 31.1 L99.9 29.0 L97.5 27.0 L94.9 25.3 L92.0 23.8 L88.9 22.7 L85.6 21.8 L82.1 21.2 L78.5 21.0 L74.8 21.2 L71.2 21.8 L67.5 22.8 L63.9 24.2 L60.4 25.9 L57.1 28.1 L54.0 30.6 L51.1 33.5 L48.6 36.7 L46.3 40.1 L44.4 43.8 L43.0 47.7 L41.9 51.7 L41.2 55.8 L41.0 60.0 L41.2 64.2 L41.9 68.3 L43.0 72.3 L44.4 76.2 L46.3 79.9 L48.6 83.3 L51.1 86.5 L54.0 89.4 L57.1 91.9 L60.4 94.1 L63.9 95.8 L67.5 97.2 L71.2 98.2 L74.8 98.8 L78.5 99.0 L82.1 98.8 L85.6 98.2 L88.9 97.3 L92.0 96.2 L94.9 94.7 L97.5 93.0 L99.9 91.0 L102.0 88.9 L103.8 86.7 L105.3 84.4 L106.5 82.1 L107.4 79.7 L108.0 77.4 L108.4 75.1 L108.5 73.0 L108.4 71.0 L108.1 69.1 L107.6 67.4 L107.1 65.8 L106.4 64.5 L105.6 63.4 L104.9 62.4 L104.1 61.6 L103.4 61.1 L102.7 60.6 L102.1 60.3 L101.6 60.1 L101.3 60.0 L101.1 60.0 L101.0 60.0 Z" fill="#FFFFFF"/>
+  <circle fill="#FFFFFF" cx="26.0" cy="60.0" r="15.0"/><circle fill="#FFFFFF" cx="78.6" cy="15.3" r="5.6"/><circle fill="#FFFFFF" cx="78.6" cy="104.7" r="5.6"/>
+  <g transform="translate(64.4 41.7) scale(0.63)"><path d="M3.6 3.7 H36.4 M3.6 16.8 H36.4 M20 3.7 A14.05 14.05 0 0 1 20 31.8 H3.6 L26.7 54.2" fill="none" stroke="#2A1245" stroke-width="7.4" stroke-linecap="round" stroke-linejoin="round"/></g>
 </svg>

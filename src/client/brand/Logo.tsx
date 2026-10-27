@@ -9,11 +9,11 @@ interface LogoProps {
   onDark?: boolean;
 }
 
-/** The one ExpRes lockup: mark (40×30) + live-text wordmark (26 px). Hidden wordmark below 320 px. */
+/** The one ExpRes lockup: mark (36×36) + live-text wordmark (26 px). Hidden wordmark below 320 px. */
 export function Logo({ asLink, onDark = false }: LogoProps) {
   const lockup = (
     <>
-      <img src={onDark ? markDark : markLight} alt="" width={40} height={30} className="h-[30px] w-[40px] shrink-0" />
+      <img src={onDark ? markDark : markLight} alt="" width={36} height={36} className="h-[36px] w-[36px] shrink-0" />
       <span
         aria-hidden="true"
         className="hidden font-display text-[26px] leading-none tracking-[-0.035em] min-[320px]:inline"

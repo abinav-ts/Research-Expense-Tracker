@@ -1,26 +1,26 @@
 # ExpRes — brand
 
 **Name:** ExpRes (Expense + Research; "express")
-**Slogan:** Breeze through grant-handling grunt work — shown **only on the loading screen**.
+**Slogan:** Breeze through the grunt work of managing conference grant claims — shown **only on the loading screen**.
 **Prototype (private Claude Design canvas):** https://claude.ai/artifact/6jm2AEYdonTVwRtkgktPMW
 
 ## Logo
-A research paper (folded corner, two text lines) stands still while a slanted rupee in saffron breezes past it, leaving three teal wind streaks (one curls at the tail).
+The Mandelbrot set (a research-figure shape) with the Indian rupee sign cut out of its main body. No streaks, no paper.
 
 | File | Use |
 |---|---|
-| `logo-mark.svg` | Mark on light grounds |
-| `logo-mark-dark.svg` | Mark on dark (ink) grounds |
+| `logo-mark.svg` | Mark on light grounds: dark set #2A1245, rupee transparent (a mask, so it shows the ground) |
+| `logo-mark-dark.svg` | Mark on dark (ink) grounds: white set, rupee drawn in ink #2A1245 (the one `<g>` is animated on the loading screen) |
 | Wordmark | "Exp" Bricolage Grotesque 500 + "Res" 800, letter-spacing −0.035em, set as live text |
 
-Lockup = mark (4:3) + wordmark at 0.7× mark height cap alignment, gap ≈ 8–24 px depending on size.
-Minimum sizes: mark 24 px wide alone; smallest lockup has a 22 px wordmark. App icon: mark on an ink rounded square (corner radius ≈ 22%); a simplified 16 px favicon is still to do.
+Lockup = square mark (36 px in the app header) + wordmark at 26 px, gap 8 px. The rupee is drawn from a reference glyph: two full-width bars, round bowl, diagonal leg, round caps.
+Minimum sizes: mark 24 px alone; smallest lockup has a 22 px wordmark. App icon: mark on an ink rounded square (corner radius ≈ 22%); a simplified 16 px favicon is still to do.
 Rules: no recolouring, no stretching, no other colours, no slogan beside the logo.
 
 ## Colour (see `tokens.css`)
-Ink #0E2A3B · Ink soft #4B6272 · Breeze #2BB3A9 (graphic only) · Breeze deep #17706B · Rupee #D96F00 (graphic only) · Rupee bright #FFB020 (on dark) · Ground #F5F8F7 · Surface #FFFFFF · Line #D7E1DF.
-Balance states use words and icons as well as colour: Healthy #17706B, Low #A85500, Overspent #B42318.
-Contrast: ink on ground 13.9:1; ink soft on ground 6.0:1; bright rupee on ink 8.1:1.
+Ink #2A1245 · Ink soft #5E4A74 · Magenta ("breeze") #C026A3 (accent, 5.2:1 on white) · Magenta deep #8A1C7C (links, verified state, accent text) · Ground #F8F5FB · Surface #FFFFFF · Line #E3DAEC. Spare accents: saffron #D96F00 / #FFB020 (not used by the logo).
+Balance states keep green, amber and red with words and icons: Healthy #17706B, Low #A85500, Overspent #B42318, so meaning never depends on the brand hue.
+Contrast (computed): ink on ground 15.3:1; ink soft on ground 7.2:1; magenta deep on white 8.3:1; magenta on white 5.2:1; Healthy, Low and Overspent on ground 5.5, 4.9 and 6.1:1.
 
 ## Type
 - **Bricolage Grotesque** (display): wordmark, titles, headings.

@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-export const SLOGAN = 'Breeze through grant-handling grunt work';
+export const SLOGAN = 'Breeze through the grunt work of managing conference grant claims';
 
 export interface SourceFile {
   /** Repo-relative path with forward slashes, e.g. "src/client/app/App.tsx". */

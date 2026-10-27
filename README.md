@@ -1,6 +1,6 @@
 # ExpRes
 
-*Breeze through grant-handling grunt work.*
+*Breeze through the grunt work of managing conference grant claims.*
 
 Privacy-first, offline-capable expense tracking and claim generation for researchers spending grant money on conference travel.
 
