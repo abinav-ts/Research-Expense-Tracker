@@ -8,3 +8,6 @@ test-results/
 *.log
 worker-configuration.d.ts
 public/ocr/
+
+# Claude Code personal settings
+.claude/settings.local.json

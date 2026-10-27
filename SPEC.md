@@ -333,7 +333,7 @@ Acceptance (all): verified by an API test that inspects the submit payload and b
 
 ## 10. Cross-cutting: demo and deployment
 
-- **REQ-DEMO-01** — A public HTTPS URL serves the app. The landing page has *Researcher* and *Reviewer (sample claim)* entry points and a one-paragraph explanation.
+- **REQ-DEMO-01** [built] — A public HTTPS URL serves the app. The landing page has *Researcher* and *Reviewer (sample claim)* entry points and a one-paragraph explanation.
 - **REQ-DEMO-02** [built] — *Load demo data* creates a sample grant (with a sample grant document), trip and expenses (domestic INR items, one card-SMS item and one foreign-currency card expense, all left *pending verification*) with synthetic proofs, each clearly watermarked "SAMPLE". No real brand screens or real data.
 - **REQ-DEMO-03** [built] — The server provides a built-in sample claim (built into the Worker from synthetic data, so it survives a database reset) at the fixed review link `/review/sample`, shown on the landing page. Its decisions stay in the visitor's browser.
 - **REQ-DEMO-04** [built] — A synthetic sample bank CSV can be downloaded from the statement segment. It has a preamble block, domestic debits, unrelated personal rows, and debits matching every demo bank-paid expense (the foreign one with an INR amount different from its estimate), so reconcile and privacy filtering can be demoed.
@@ -342,14 +342,14 @@ Acceptance (all): verified by an API test that inspects the submit payload and b
 
 ## 11. Cross-cutting: non-functional requirements
 
-- **REQ-NFR-01** Mobile-first; usable from 360 px width; touch targets ≥ 44 px.
+- **REQ-NFR-01** [built] Mobile-first; usable from 360 px width; touch targets ≥ 44 px.
 - **REQ-NFR-02** Form labels, keyboard focus, contrast ≥ 4.5:1, status never conveyed by colour alone.
 - **REQ-NFR-03** First load under ~3 s on a good 4G connection (excluding OCR assets); OCR of one screenshot under ~10 s on a mid-range phone (targets, measure in M4).
 - **REQ-NFR-04** [built] All money is integer minor units (paise for INR); no floating-point arithmetic on amounts. FX estimates use integer micro-rates (rate × 10⁶) with half-up rounding; formatting only at the UI edge.
-- **REQ-NFR-05** Dates are `YYYY-MM-DD` calendar dates compared as strings; times are display-only (default Asia/Kolkata).
+- **REQ-NFR-05** [built] Dates are `YYYY-MM-DD` calendar dates compared as strings; times are display-only (default Asia/Kolkata).
 - **REQ-NFR-06** [built] `npm run trace` reads the MUST list from this index and reports how many have a test whose title contains their ID. It fails if a requirement marked `built` or `verified` has no such test, or if a test title cites an ID that is not in this index. `npm run trace -- --strict` fails if *any* MUST has no test; it is the M5 gate (a plain `trace` cannot be green from M0 on, because unbuilt MUSTs have no tests yet).
-- **REQ-NFR-07** All server input validated with zod; each stored file ≤ 1 MB after compression (D1 allows 2 MB per row), ≤ 40 attachments and ≤ 25 MB per claim.
-- **REQ-NFR-08** Primary: Chrome/Edge on Android and desktop. Supported with fallbacks: Safari on iOS (no share-to-app; use picker). Best effort: Firefox.
+- **REQ-NFR-07** [built] All server input validated with zod; each stored file ≤ 1 MB after compression (D1 allows 2 MB per row), ≤ 40 attachments and ≤ 25 MB per claim.
+- **REQ-NFR-08** [built] Primary: Chrome/Edge on Android and desktop. Supported with fallbacks: Safari on iOS (no share-to-app; use picker). Best effort: Firefox.
 
 ### Device support matrix (verify on real devices in M4)
 
@@ -406,6 +406,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-27 v0.6.1 — M4: Online/Offline indicator in every header (REQ-OFF-07), optional Install button and iOS "Add to Home Screen" hint in Settings (REQ-OFF-01), full offline flow tested (REQ-OFF-02); REQ-DEMO-01 and REQ-NFR-01/05/07/08 marked built with tests. No requirement text changed.
 - 2026-10-26 v0.6.0 — M3 spec drafted and built (`specs/05-claim-and-review.md`): claim preview = reviewer view, PDF on the device, submit with two private links (made on the device, stored as hashes), reviewer decisions with lock, link security, the claim-path privacy checks, the built-in sample claim (decisions stay in the browser); eleven decisions listed for the owner. Built at the owner's instruction before review; changes welcome.
 - 2026-10-26 v0.5.4 — Statement import hardened (REQ-CSV-01/02/09): files are identified from their first bytes (PDF, Excel, pictures get a plain message), UTF-16 and Windows-1252 are decoded, files with no header row or unusual column names are read from their contents, decimal-comma and many currency/Dr-Cr notations are accepted, month-name-first dates added. 35 new unit and 3 new browser tests. One real defect found by the browser tests: a hook placed after an early return crashed the statement page (unit tests could not see it).
 - 2026-10-26 v0.5.3 — Statement screen built: REQ-CSV-01/02/03/04/05/08/09/10 (read a bank CSV on the device, guess and remember the columns per bank, table with search and the trip dates, tick rows and categorise, reconcile automatically for INR and by choice for foreign spend, by hand, unlink; sample file downloadable). Tested on five layouts (three Indian-bank styles, a signed amount, and an amount with Dr/Cr). Statement rows not ticked or paired are never saved. REQ-CSV-11 (optional keep-on-device) recorded as a possible later add-on. Date styles are four families, not seven formats. Two real defects found by the tests: a cramped description on phone widths, and a rejected proposal disappearing instead of moving to the by-hand list.

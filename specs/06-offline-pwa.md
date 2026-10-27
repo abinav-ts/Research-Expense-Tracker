@@ -5,16 +5,16 @@ Parent: `../SPEC.md`. Device matrix: SPEC §11.
 
 ## Requirements
 
-### REQ-OFF-01 — Installable PWA [SHOULD] [agreed]
+### REQ-OFF-01 — Installable PWA [SHOULD] [built]
 The app is a normal website; installing it is optional and needs no app store, APK or signing. A valid manifest, icons and HTTPS (provided by Cloudflare) let Chrome offer "Install app" / "Add to Home Screen".
 Acceptance:
 - The manifest has `name`, `short_name`, `start_url` "/", `display` "standalone", theme/background colours, icons at 192 and 512 px (one maskable), and the `share_target` of REQ-OFF-03.
 - On the deployed HTTPS URL, Chrome (desktop and Android) offers installation, and Chrome DevTools → Application → Manifest reports no installability errors (manual check, M0 and M4).
 - Where the browser exposes `beforeinstallprompt`, the app shows an "Install app" button; on iOS Safari it shows a hint "Share → Add to Home Screen".
 - The installed app opens in its own window without browser chrome.
-Tests: tests/e2e/pwa.smoke.test.ts (manifest fields, service worker registered)
+Tests: tests/e2e/pwa.smoke.test.ts (manifest fields, service worker registered), tests/e2e/install.smoke.test.ts (install button, iOS hint)
 
-### REQ-OFF-02 — Segments A and B work offline [MUST] [agreed]
+### REQ-OFF-02 — Segments A and B work offline [MUST] [built]
 After one online visit, with the network off: setup, expense capture, list, balance, CSV import, reconcile, rules, preview and PDF all work. Only *Submit* needs the network.
 Acceptance:
 - Given the app loaded once online and the service worker active (the app shows "Ready for offline use"), When the network is turned off and the app is closed and reopened (cold start), Then it loads and shows existing data.
@@ -23,7 +23,7 @@ Acceptance:
 - During the whole offline flow, no request leaves for a third-party origin (network log shows only our own origin).
 - Client routes (e.g. `/inbox`, `/trip/…`) load offline via a navigation fallback to the app shell; `/api/*` is never served from the fallback.
 - The precache contains the app shell, JS/CSS, self-hosted fonts and icons, the sample CSV and demo fixtures. The OCR assets (~7 MB) are not part of the install precache: they are cached in the background by REQ-OFF-05, so a first visit stays small.
-Tests: tests/e2e/offline.smoke.test.ts (Playwright `context.setOffline(true)` after first load); manual airplane-mode check in M4
+Tests: tests/e2e/offline.smoke.test.ts (Playwright `context.setOffline(true)` after first load); manual airplane-mode check on a phone
 
 ### REQ-OFF-03 — Share Target handled by service worker [SHOULD] [built]
 Manifest `share_target` accepts image, PDF and text by POST; the service worker stores them in IndexedDB and redirects to the Inbox, with no network needed.
@@ -60,7 +60,7 @@ Acceptance:
 - Settings shows the version (commit and build time) and has "Refresh app files": it removes the saved copy of the app and reloads the latest, leaving all data and the recognition data in place.
 Tests: tests/e2e/pwa.smoke.test.ts
 
-### REQ-OFF-07 — Online/offline indicator [MUST] [agreed]
+### REQ-OFF-07 — Online/offline indicator [MUST] [built]
 Acceptance:
 - The header shows "Online" or "Offline" with an icon (not colour alone). It updates within 2 seconds of the connection changing, using the browser online/offline events.
 - Changes are announced to screen readers through a polite live region.

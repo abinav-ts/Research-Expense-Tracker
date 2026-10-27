@@ -18,7 +18,16 @@ test.describe('REQ-OFF-02: segments A and B work with the network off', () => {
     page.on('request', (r) => !r.url().startsWith('blob:') && !r.url().startsWith('data:') && requests.push(r.url()));
     await context.setOffline(true);
 
-    // set up and capture
+    // the demo trip (it can only be loaded into an empty app), its statement, matching and the claim
+    await verifiedDemoTrip(page);
+    await page.getByTestId('prepare-claim').click();
+    await expect(page.getByTestId('claim-item')).toHaveCount(4);
+    await expect(page.getByTestId('claim-offline')).toBeVisible();
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download claim pack (PDF)' }).click();
+    expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+
+    // then, still offline, set up another grant by hand and capture by hand and by pasted SMS
     await createGrant(page);
     await createTrip(page);
     await addExpense(page, { amount: '450', payee: 'Corner Cafe', category: 'meals' });
@@ -27,15 +36,6 @@ test.describe('REQ-OFF-02: segments A and B work with the network off', () => {
     await page.getByLabel('Paste an SMS or payment notification').fill(CARD_SMS);
     await page.getByRole('button', { name: 'Add to Inbox' }).click();
     await expect(page.getByTestId('inbox-item')).toHaveCount(1);
-
-    // statement, matching and the claim, on the demo trip
-    await verifiedDemoTrip(page);
-    await page.getByTestId('prepare-claim').click();
-    await expect(page.getByTestId('claim-item')).toHaveCount(4);
-    await expect(page.getByTestId('claim-offline')).toBeVisible();
-    const download = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Download claim pack (PDF)' }).click();
-    expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
 
     for (const url of requests) expect(new URL(url).origin, url).toBe(ORIGIN);
     expect(requests.filter((u) => u.includes('/api/claims'))).toEqual([]);
