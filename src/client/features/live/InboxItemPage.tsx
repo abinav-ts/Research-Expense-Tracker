@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useNavigate, useParams } from 'react-router';
 import { normaliseRules } from '../../../shared/grant.ts';
 import { scrubReceiptText } from '../../../shared/receipt-parser.ts';
@@ -7,7 +8,7 @@ import { suggestFields } from '../../../shared/suggest.ts';
 import { PROOF_TYPE_LABELS, type InboxItem, type ProofType } from '../../../shared/types.ts';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
 import { SelectField } from '../../components/fields.tsx';
-import { btn, btnDanger, h1 } from '../../components/ui.ts';
+import { btn, btnDanger, h1, linkClass } from '../../components/ui.ts';
 import { db, repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
@@ -131,7 +132,7 @@ function Confirm({ item, next, text }: { item: InboxItem; next?: string | undefi
   const [discarding, setDiscarding] = useState(false);
   if (!choices) return <p role="status">Loading…</p>;
   if (choices.trips.length === 0) {
-    return <p role="status">Create a grant and a trip first, then confirm this proof. <Link to="/grants" className="underline">Go to grants</Link></p>;
+    return <p role="status">Create a grant and a trip first, then confirm this proof. <Link to="/grants" className={linkClass}>Go to grants</Link></p>;
   }
 
   // Default trip: the one whose dates include today, else the last used one, else the first.
@@ -187,7 +188,7 @@ export function InboxItemPage() {
   const data = useLive(async () => ({ item: (await queries.inboxItem(itemId)) ?? null, list: await queries.inboxList() }), [itemId]);
   const [ocrText, setOcrText] = useState<{ itemId: string; text: string }>();
   if (!data) return <p role="status">Loading…</p>;
-  if (!data.item) return <p role="alert">That proof is gone (it may have been confirmed). <Link to="/inbox" className="underline">Back to the list</Link></p>;
+  if (!data.item) return <p role="alert">That proof is gone (it may have been confirmed). <Link to="/inbox" className={linkClass}>Back to the list</Link></p>;
   const { item, list } = data;
   const next = list.find((i) => i.id !== item.id)?.id;
   const isImage = item.kind === 'file' && !!item.mime?.startsWith('image/');
@@ -196,6 +197,7 @@ export function InboxItemPage() {
 
   return (
     <div>
+      <BackLink to="/inbox" label="Expenses with proof" />
       <h1 className={`${h1} mb-4`}>Confirm expense</h1>
       <div className="grid gap-x-8 md:grid-cols-2">
         <div>

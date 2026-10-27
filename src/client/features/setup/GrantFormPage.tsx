@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useNavigate, useParams } from 'react-router';
 import { validateGrantForm, type GrantFormInput } from '../../../shared/grant.ts';
 import { TextField } from '../../components/fields.tsx';
-import { btn, btnPrimary, h1 } from '../../components/ui.ts';
+import { btn, btnPrimary, h1, linkClass } from '../../components/ui.ts';
 import { db } from '../../db/index.ts';
 import { repo } from '../../db/index.ts';
 import { attempt } from '../../lib/errors.ts';
@@ -43,6 +44,7 @@ function GrantForm({ grant }: { grant?: Grant }) {
 
   return (
     <form onSubmit={submit} noValidate>
+      <BackLink to={grant ? `/grants/${grant.id}` : '/grants'} label={grant ? grant.name : 'grants'} />
       <h1 className={`${h1} mb-6`}>{grant ? 'Edit grant' : 'New grant'}</h1>
       <TextField id="name" label="Grant name" value={form.name} onChange={set('name')} error={errors.name} maxLength={200} />
       <TextField id="sponsor" label="Sponsor (optional)" value={form.sponsor} onChange={set('sponsor')} error={errors.sponsor} />
@@ -66,6 +68,6 @@ export function GrantFormPage() {
   const grant = useLive(async () => (grantId ? ((await db.grants.get(grantId)) ?? null) : undefined), [grantId]);
   if (!grantId) return <GrantForm />;
   if (grant === undefined) return <p role="status">Loading…</p>;
-  if (grant === null) return <p role="alert">That grant was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (grant === null) return <p role="alert">That grant was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   return <GrantForm grant={grant} />;
 }

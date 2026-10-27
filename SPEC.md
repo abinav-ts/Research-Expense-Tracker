@@ -319,6 +319,8 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-NFR-06 | Every MUST has a test citing its ID | M | SPEC §11 |
 | REQ-NFR-07 | Input validation and upload limits | M | SPEC §11 |
 | REQ-NFR-08 | Browser support matrix honoured | M | SPEC §11 |
+| REQ-NFR-09 | Every inner screen has a "Back to …" link to where the user came from | S | SPEC §11 |
+| REQ-NFR-10 | Clickable words are boxes (tap targets), not just underlined text | S | SPEC §11 |
 
 ## 9. Cross-cutting: privacy requirements
 
@@ -350,6 +352,8 @@ Acceptance (all): verified by an API test that inspects the submit payload and b
 - **REQ-NFR-06** [built] `npm run trace` reads the MUST list from this index and reports how many have a test whose title contains their ID. It fails if a requirement marked `built` or `verified` has no such test, or if a test title cites an ID that is not in this index. `npm run trace -- --strict` fails if *any* MUST has no test; it is the M5 gate (a plain `trace` cannot be green from M0 on, because unbuilt MUSTs have no tests yet).
 - **REQ-NFR-07** [built] All server input validated with zod; each stored file ≤ 1 MB after compression (D1 allows 2 MB per row), ≤ 40 attachments and ≤ 25 MB per claim.
 - **REQ-NFR-08** [built] Primary: Chrome/Edge on Android and desktop. Supported with fallbacks: Safari on iOS (no share-to-app; use picker). Best effort: Firefox.
+- **REQ-NFR-09** [built] Wayfinding. Every screen below the top level starts with a box-shaped link **"← Back to <where>"** that returns to the screen the user came from in the app's own structure: grant → *Back to grants*; trip → *Back to <grant name>*; trip, expense, cash expense, statement, claim and the edit screens → *Back to <trip name>* (edit grant → *Back to <grant name>*); a proof being reviewed → *Back to Expenses with proof*; Expenses with proof and Settings → *Back to <the last trip>* or *Back to grants*; grants → *Back to start*. The reviewer and owner pages have none (a reviewer has no home in the app). Tests: tests/e2e/navigation.smoke.test.ts.
+- **REQ-NFR-10** [built] Anything the user can click or tap that is not a button is drawn as a box (border, padding, at least 44 px tall), never as an underlined phrase. This covers links in sentences, navigation, list titles and text-style buttons such as Dismiss and Hide. Tests: tests/e2e/navigation.smoke.test.ts.
 
 ### Device support matrix (verify on real devices in M4)
 
@@ -407,6 +411,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 ## Changelog
 
 - 2026-10-27 v0.6.2 — Brand finalised: the logo is the Mandelbrot set with the rupee cut out (square mark, 36 px in the header), palette changed to aubergine and magenta, new slogan "Breeze through the grunt work of managing conference grant claims", loading screen animates only the rupee, app icons redrawn. Mark size in REQ-BRAND-01 changed from 40×30 to 36×36 px. No other requirement text changed.
+- 2026-10-27 v0.6.4 — Owner's request, two usability rules added: REQ-NFR-09 (a "Back to …" link on every inner screen) and REQ-NFR-10 (clickable words are boxes, not underlines). The Cowork brand edits (Mandelbrot mark, aubergine and magenta palette, new slogan; recorded as v0.6.2 above) are committed with this change.
 - 2026-10-27 v0.6.3 — Owner's request. The hand-entry button becomes "+ Cash expense" and is cash-only (no "Paid by"), with an optional receipt (up to 5 files) so a cash item can carry its proof; the Inbox is renamed "Expenses with proof" (button on the trip page, "Proofs" in the navigation, address unchanged). Edits REQ-CAP-01 and REQ-CAP-04 wording; REQ-CAP-08 (add a proof to an existing expense) still to build.
 - 2026-10-27 v0.6.1 — M4: Online/Offline indicator in every header (REQ-OFF-07), optional Install button and iOS "Add to Home Screen" hint in Settings (REQ-OFF-01), full offline flow tested (REQ-OFF-02); REQ-DEMO-01 and REQ-NFR-01/05/07/08 marked built with tests. No requirement text changed.
 - 2026-10-26 v0.6.0 — M3 spec drafted and built (`specs/05-claim-and-review.md`): claim preview = reviewer view, PDF on the device, submit with two private links (made on the device, stored as hashes), reviewer decisions with lock, link security, the claim-path privacy checks, the built-in sample claim (decisions stay in the browser); eleven decisions listed for the owner. Built at the owner's instruction before review; changes welcome.

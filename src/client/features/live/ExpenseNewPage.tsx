@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useNavigate, useParams } from 'react-router';
 import { normaliseRules } from '../../../shared/grant.ts';
-import { btn, h1 } from '../../components/ui.ts';
+import { btn, h1, linkClass } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { db } from '../../db/index.ts';
 import { attempt } from '../../lib/errors.ts';
@@ -23,13 +24,14 @@ export function ExpenseNewPage() {
     };
   }, [tripId]);
   if (!data) return <p role="status">Loading…</p>;
-  if (!data.trip) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (!data.trip) return <p role="alert">That trip was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   const { trip, memory, bufferDays, knownPayees, existing } = data;
   return (
     <div>
+      <BackLink to={`/trips/${trip.id}`} label={trip.name} />
       <h1 className={`${h1} mb-1`}>Cash expense</h1>
       <p className="mb-1 text-ink-soft">{trip.name}</p>
-      <p className="mb-6 text-sm text-ink-soft">For money you paid in cash. Paid by bank, UPI or card? Use <Link to="/inbox" className="underline">+ Expenses with proof</Link> or the bank statement.</p>
+      <p className="mb-6 text-sm text-ink-soft">For money you paid in cash. Paid by bank, UPI or card? Use <Link to="/inbox" className={linkClass}>+ Expenses with proof</Link> or the bank statement.</p>
       <ExpenseFormFields
         tripRates={trip.fxRatesMicro} tripWindow={{ trip, bufferDays }} memory={memory} knownPayees={knownPayees} existing={existing}
         onDiscard={() => navigate(`/trips/${trip.id}`)} submitLabel="Save expense" fixedPaymentMode="cash"

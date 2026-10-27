@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { linkClass } from '../components/ui.ts';
 import { useEffect, useSyncExternalStore } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Logo } from '../brand/Logo.tsx';
@@ -15,7 +16,7 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-const navLink = 'inline-flex min-h-11 items-center rounded-lg px-2 font-semibold text-ink hover:underline';
+const navLink = 'inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-semibold text-ink hover:border-ink-soft';
 
 function ResearcherNav() {
   const inboxCount = useLive(() => db.inbox.count()) ?? 0;
@@ -61,7 +62,7 @@ function ErrorBanner() {
     <div role="alert" className="border-b-2 border-state-over bg-surface">
       <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-4 py-3">
         <p className="flex-1 font-semibold text-state-over">⚠ {message}</p>
-        <button type="button" onClick={clearError} className="min-h-11 px-3 font-semibold underline">Dismiss</button>
+        <button type="button" onClick={clearError} className={linkClass}>Dismiss</button>
       </div>
     </div>
   );

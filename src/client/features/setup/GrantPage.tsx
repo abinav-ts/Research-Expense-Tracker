@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useNavigate, useParams } from 'react-router';
 import { deletionImpactText } from '../../../shared/grant.ts';
 import { formatDateLabel } from '../../../shared/dates.ts';
 import { formatInr } from '../../../shared/money.ts';
 import { tripTotals } from '../../../shared/grouping.ts';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
-import { btn, btnDanger, btnPrimary, card, h1, h2, mutedText } from '../../components/ui.ts';
+import { btn, btnDanger, btnPrimary, card, h1, h2, linkClass, mutedText } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
@@ -21,11 +22,12 @@ export function GrantPage() {
   const [confirming, setConfirming] = useState<string>();
 
   if (detail === undefined) return <p role="status">Loading…</p>;
-  if (detail === null) return <p role="alert">That grant was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (detail === null) return <p role="alert">That grant was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   const { grant, trips, expenses, docs } = detail;
 
   return (
     <div>
+      <BackLink to="/grants" label="grants" />
       <h1 className={h1}>{grant.name}</h1>
       <p className={`mb-4 ${mutedText}`}>
         {grant.sponsor && `${grant.sponsor} · `}{formatDateLabel(grant.startDate)} to {formatDateLabel(grant.endDate)} · already utilised {formatInr(grant.utilisedBeforeMinor)}
@@ -57,7 +59,7 @@ export function GrantPage() {
           {trips.length === 0 && <li className={`${card} ${mutedText}`}>No trips yet. Add the conference you are travelling to.</li>}
           {trips.map(({ trip, expenses: tripExpenses }) => (
             <li key={trip.id} className={card} data-testid="trip-card">
-              <Link to={`/trips/${trip.id}`} className="font-display text-lg font-semibold underline">{trip.name}</Link>
+              <Link to={`/trips/${trip.id}`} className={`${linkClass} font-display text-lg`}>{trip.name}</Link>
               <p className={`text-sm ${mutedText}`}>{trip.city}, {trip.country} · {formatDateLabel(trip.startDate)} to {formatDateLabel(trip.endDate)}</p>
               <p className="amount text-sm">{formatInr(tripTotals(tripExpenses).totalMinor)} spent</p>
             </li>

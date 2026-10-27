@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useParams } from 'react-router';
 import { allowedWindow } from '../../../shared/rules/date-window.ts';
 import { applyMapping, guessMapping, profileKey, type DateFormat, type StatementMapping } from '../../../shared/statement-map.ts';
 import { parseStatementText, type RawStatement } from '../../../shared/statement-parse.ts';
 import { decodeStatement } from '../../lib/decode.ts';
-import { btn, btnPrimary, card, h1, h2, mutedText } from '../../components/ui.ts';
+import { btn, btnPrimary, card, h1, h2, linkClass, mutedText } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt, clearError, reportError } from '../../lib/errors.ts';
@@ -36,7 +37,7 @@ export function StatementPage() {
   const applied = useMemo(() => (file && confirmed ? applyMapping(file.statement.rows, confirmed) : undefined), [file, confirmed]);
 
   if (!data) return <p role="status">Loading…</p>;
-  if (!data.detail) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (!data.detail) return <p role="alert">That trip was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   const { trip, grant, expenses, grantExpenses } = data.detail;
 
   async function choose(chosen: File | undefined) {
@@ -68,7 +69,7 @@ export function StatementPage() {
 
   return (
     <div>
-      <p className="text-sm"><Link to={`/trips/${trip.id}`} className="underline">{trip.name}</Link></p>
+      <BackLink to={`/trips/${trip.id}`} label={trip.name} />
       <h1 className={`${h1} mb-4`}>Bank statement</h1>
 
       <section className={`${card} mb-6`} aria-labelledby="stmt-file-heading">
@@ -97,7 +98,7 @@ export function StatementPage() {
             Read <strong>{file.name}</strong>: {file.statement.rows.length} lines{file.statement.headerless ? ' (this file has no column names, so please check the columns below)' : ' under the column names'}.
             {applied && ` ${applied.debits.length} debits, ${applied.creditCount} ${applied.creditCount === 1 ? 'credit' : 'credits'}.`}
             {applied && applied.problems.length > 0 && (
-              <> <button type="button" className="font-semibold text-breeze-deep underline" onClick={() => setShowProblems(!showProblems)} data-testid="problems-toggle">{applied.problems.length} {applied.problems.length === 1 ? 'line' : 'lines'} could not be read</button></>
+              <> <button type="button" className={linkClass} onClick={() => setShowProblems(!showProblems)} data-testid="problems-toggle">{applied.problems.length} {applied.problems.length === 1 ? 'line' : 'lines'} could not be read</button></>
             )}
           </p>
         )}
@@ -119,7 +120,7 @@ export function StatementPage() {
         />
       )}
       {file && confirmed && (
-        <p className="mb-4 text-sm"><button type="button" className="font-semibold text-breeze-deep underline" onClick={() => setConfirmed(undefined)} data-testid="change-mapping">Change the columns</button></p>
+        <p className="mb-4 text-sm"><button type="button" className={linkClass} onClick={() => setConfirmed(undefined)} data-testid="change-mapping">Change the columns</button></p>
       )}
 
       {applied && (

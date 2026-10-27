@@ -1,6 +1,6 @@
 // REQ-CLM-07, REQ-REV-05: the researcher's view of a submitted claim: status, decisions, comments, approved total.
 import { useParams } from 'react-router';
-import { h1, mutedText } from '../../components/ui.ts';
+import { h1, linkClass, mutedText } from '../../components/ui.ts';
 import { ClaimView as ClaimBody } from './ClaimView.tsx';
 import { RemoteMessage } from './RemoteMessage.tsx';
 import { StatusBanner, Totals } from './ReviewPage.tsx';
@@ -17,7 +17,7 @@ export function OwnerPage() {
       <p className={`mb-4 ${mutedText}`}>Submitted {new Date(view.submittedAt).toLocaleString()}. The decisions below are the reviewer’s.</p>
       <StatusBanner view={view} />
       <div className="mb-4"><Totals view={view} reviews={view.reviews} /></div>
-      <button type="button" className="mb-4 min-h-11 font-semibold underline" onClick={reload}>Refresh</button>
+      <button type="button" className={`${linkClass} mb-4`} onClick={reload}>Refresh</button>
       <ClaimBody payload={view.payload} reviews={view.reviews} fileUrl={(id) => `/api/owner/${encodeURIComponent(token)}/files/${encodeURIComponent(id)}`} />
     </div>
   );

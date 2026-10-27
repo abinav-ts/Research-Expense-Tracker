@@ -1,4 +1,6 @@
 import { InstallSection } from './InstallSection.tsx';
+import { useBackTarget } from '../../components/useBackTarget.ts';
+import { BackLink } from '../../components/BackLink.tsx';
 import { useState } from 'react';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
 import { btn, btnDanger, card, h1, h2, mutedText } from '../../components/ui.ts';
@@ -20,6 +22,7 @@ async function refreshAppFiles(): Promise<void> {
 
 /** Settings (M1b: what ExpRes has learned, REQ-CAP-16). Backup and storage controls arrive with REQ-CAP-12 and REQ-OFF-08. */
 export function SettingsPage() {
+  const back = useBackTarget();
   const counts = useLive(() => repo.learningCounts());
   const [confirming, setConfirming] = useState(false);
   const total = counts ? counts.payees + counts.formats + counts.categories : 0;
@@ -27,6 +30,7 @@ export function SettingsPage() {
 
   return (
     <div>
+      <BackLink to={back.to} label={back.label} />
       <h1 className={`${h1} mb-6`}>Settings</h1>
 
       <PayeeList />

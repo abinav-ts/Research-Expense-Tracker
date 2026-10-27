@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useBackTarget } from '../../components/useBackTarget.ts';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useSearchParams } from 'react-router';
 import { ACCEPTED_TYPES_TEXT, TOO_LARGE_NOTE } from '../../../shared/files.ts';
 import { scrubReceiptText } from '../../../shared/receipt-parser.ts';
@@ -21,6 +23,7 @@ const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*,application/
 /** REQ-CAP-02, -04, -13: add proofs (files, camera, pasted text) and review unconfirmed ones. */
 export function InboxPage() {
   const items = useLive(() => queries.inboxList());
+  const back = useBackTarget();
   const files = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<string[]>([]);
@@ -43,6 +46,7 @@ export function InboxPage() {
 
   return (
     <div>
+      <BackLink to={back.to} label={back.label} />
       <h1 className={`${h1} mb-2`}>Expenses with proof</h1>
       <p className="mb-4 text-ink-soft">Add the proof of a payment: a UPI or card screenshot, SMS text, an invoice or a ticket ({ACCEPTED_TYPES_TEXT}). Each becomes an expense once you review and confirm it. Paid in cash? Use <strong>+ Cash expense</strong> on the trip page.</p>
 

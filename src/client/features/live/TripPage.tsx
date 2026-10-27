@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useParams } from 'react-router';
 import { formatDateLabel } from '../../../shared/dates.ts';
 import { applyFilters, tripTotals, type ExpenseFilters } from '../../../shared/grouping.ts';
@@ -6,7 +7,7 @@ import { formatInr } from '../../../shared/money.ts';
 import { evaluateTrip } from '../../../shared/rules/evaluate-trip.ts';
 import { CATEGORY_IDS, CATEGORY_LABELS } from '../../../shared/types.ts';
 import { SelectField } from '../../components/fields.tsx';
-import { btn, btnPrimary, card, h1, mutedText } from '../../components/ui.ts';
+import { btn, btnPrimary, card, h1, linkClass, mutedText } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { useLive } from '../../lib/useLive.ts';
@@ -23,7 +24,7 @@ export function TripPage() {
   const [flaggedOnly, setFlaggedOnly] = useState(false);
 
   if (data === undefined) return <p role="status">Loading…</p>;
-  if (data === null) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (data === null) return <p role="alert">That trip was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   const { trip, grant, expenses, grantExpenses } = data;
 
   // Flags come from the one rules engine and are worked out on every render, so any change to the trip, the grant's rules
@@ -40,7 +41,7 @@ export function TripPage() {
 
   return (
     <div>
-      <p className="text-sm"><Link to={`/grants/${grant.id}`} className="underline">{grant.name}</Link></p>
+      <BackLink to={`/grants/${grant.id}`} label={grant.name} />
       <h1 className={h1}>{trip.name}</h1>
       <p className={`mb-4 ${mutedText}`}>{trip.city}, {trip.country} · {formatDateLabel(trip.startDate)} to {formatDateLabel(trip.endDate)}</p>
 
@@ -57,7 +58,7 @@ export function TripPage() {
       {needFixing.length > 0 && (
         <p role="status" className="mb-4 rounded-lg border-2 border-state-over bg-surface p-3 font-semibold text-state-over" data-testid="need-fixing">
           ✖ {needFixing.length} {needFixing.length === 1 ? 'item needs' : 'items need'} fixing before this can be claimed.{' '}
-          <Link to={`/expenses/${needFixing[0]}`} className="underline">Fix the first one</Link>
+          <Link to={`/expenses/${needFixing[0]}`} className={linkClass}>Fix the first one</Link>
         </p>
       )}
       <div className="mb-6 flex flex-wrap gap-3">
@@ -75,7 +76,7 @@ export function TripPage() {
             {submissions.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span>{new Date(s.submittedAt).toLocaleDateString()} · {s.itemCount} {s.itemCount === 1 ? 'item' : 'items'} · <span className="amount">{formatInr(s.totalMinor)}</span></span>
-                <Link to={`/claim/${s.ownerToken}`} className="font-semibold text-breeze-deep underline">See the outcome</Link>
+                <Link to={`/claim/${s.ownerToken}`} className={linkClass}>See the outcome</Link>
               </li>
             ))}
           </ul>
@@ -84,7 +85,7 @@ export function TripPage() {
 
       {expenses.length === 0 ? (
         <p className={`${card} ${mutedText}`} data-testid="empty-trip">
-          No expenses yet. Choose <strong>+ Cash expense</strong> to type one in, or <Link to="/inbox" className="underline">+ Expenses with proof</Link> to add a payment screenshot, photo or SMS.
+          No expenses yet. Choose <strong>+ Cash expense</strong> to type one in, or <Link to="/inbox" className={linkClass}>+ Expenses with proof</Link> to add a payment screenshot, photo or SMS.
         </p>
       ) : (
         <>

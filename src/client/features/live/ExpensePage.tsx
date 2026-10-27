@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useNavigate, useParams } from 'react-router';
 import { currencyExponent } from '../../../shared/currency.ts';
 import { minorToText } from '../../../shared/money.ts';
 import { evaluateTrip } from '../../../shared/rules/evaluate-trip.ts';
 import { microToText } from '../../../shared/trip.ts';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
-import { btn, btnDanger, h1 } from '../../components/ui.ts';
+import { btn, btnDanger, h1, linkClass } from '../../components/ui.ts';
 import { repo } from '../../db/index.ts';
 import { queries } from '../../db/queries.ts';
 import { attempt } from '../../lib/errors.ts';
@@ -25,7 +26,7 @@ export function ExpensePage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (!data) return <p role="status">Loading…</p>;
-  if (!data.detail) return <p role="alert">That expense was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (!data.detail) return <p role="alert">That expense was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   const { expense, trip, grant } = data.detail;
   const bufferDays = grant.rules.travelBufferDays;
   const flags = evaluateTrip(grant, trip, data.existing).byItem.get(expense.id) ?? [];
@@ -34,7 +35,7 @@ export function ExpensePage() {
 
   return (
     <div>
-      <p className="text-sm"><Link to={back} className="underline">{trip.name}</Link></p>
+      <BackLink to={back} label={trip.name} />
       <h1 className={`${h1} mb-1`}>{expense.payee}</h1>
       <FlagPanel expenseId={expense.id} flags={flags} justification={expense.justification} />
       {expense.excluded && <p role="status" className="mb-2 font-semibold text-state-low">Excluded: not counted in the balance and left out of the claim.</p>}

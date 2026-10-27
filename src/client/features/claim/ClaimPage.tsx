@@ -1,5 +1,6 @@
 // REQ-CLM-01..04, REQ-PRIV-01, REQ-PRIV-03: prepare a claim. Nothing leaves the device until Submit, and Submit needs the
 // user to confirm that the preview below is what the reviewer will see.
+import { BackLink } from '../../components/BackLink.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { CLAIM_LIMITS } from '../../../shared/claim.ts';
@@ -32,7 +33,7 @@ export function ClaimPage() {
   useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
 
   if (data === undefined || !view || !loadedClaimant) return <p role="status">Loading…</p>;
-  if (data === null) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (data === null) return <p role="alert">That trip was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   const { trip, grant } = view;
 
   if (view.draft.items.length === 0) {
@@ -107,7 +108,7 @@ export function ClaimPage() {
 
   return (
     <div>
-      <p className="text-sm"><Link to={`/trips/${trip.id}`} className="underline">{trip.name}</Link></p>
+      <BackLink to={`/trips/${trip.id}`} label={trip.name} />
       <h1 className={h1}>Prepare claim</h1>
       <p className={`mb-4 ${mutedText}`}>
         Check the preview below. It is exactly what the reviewer will see. Nothing leaves this device until you press <strong>Submit</strong>.

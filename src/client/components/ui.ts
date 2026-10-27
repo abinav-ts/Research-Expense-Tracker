@@ -3,7 +3,8 @@ const base = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg 
 export const btn = `${base} border border-ink-soft bg-surface text-ink hover:border-breeze-deep`;
 export const btnPrimary = `${base} bg-ink text-on-dark hover:bg-ink-soft`;
 export const btnDanger = `${base} border border-state-over bg-surface text-state-over`;
-export const linkClass = 'font-semibold text-breeze-deep underline';
+// REQ-NFR-10: a clickable phrase is a box, not underlined text.
+export const linkClass = 'inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 py-1 font-semibold text-breeze-deep hover:border-breeze-deep';
 export const card = 'rounded-xl border border-line bg-surface p-5';
 export const h1 = 'font-display text-[28px] leading-[34px] font-bold';
 export const h2 = 'font-display text-xl leading-[26px] font-semibold';

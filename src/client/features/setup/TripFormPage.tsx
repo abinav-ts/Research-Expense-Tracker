@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { BackLink } from '../../components/BackLink.tsx';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { COMMON_CURRENCIES } from '../../../shared/currency.ts';
 import { microToText, validateTripForm, type TripFormInput } from '../../../shared/trip.ts';
 import type { Grant, Trip } from '../../../shared/types.ts';
 import { SelectField, TextField } from '../../components/fields.tsx';
 import { ConfirmPanel } from '../../components/ConfirmPanel.tsx';
-import { btn, btnDanger, btnPrimary, h1 } from '../../components/ui.ts';
+import { btn, btnDanger, btnPrimary, h1, linkClass } from '../../components/ui.ts';
 import { db, repo } from '../../db/index.ts';
 import { attempt } from '../../lib/errors.ts';
 import { useLive } from '../../lib/useLive.ts';
@@ -47,6 +48,7 @@ function TripForm({ grants, grantId, trip }: { grants: Grant[]; grantId: string;
 
   return (
     <form onSubmit={submit} noValidate>
+      <BackLink to={trip ? `/trips/${trip.id}` : grant ? `/grants/${grant.id}` : '/grants'} label={trip ? trip.name : grant ? grant.name : 'grants'} />
       <h1 className={`${h1} mb-6`}>{trip ? 'Edit trip' : 'New trip'}</h1>
       {!trip && (
         <SelectField id="grant" label="Grant" value={chosenGrant} onChange={setChosenGrant} options={grants.map((g) => ({ value: g.id, label: g.name }))} />
@@ -109,7 +111,7 @@ export function TripFormPage() {
   }), [tripId]);
 
   if (!data) return <p role="status">Loading…</p>;
-  if (tripId && !data.trip) return <p role="alert">That trip was not found. <Link to="/grants" className="underline">Back to grants</Link></p>;
+  if (tripId && !data.trip) return <p role="alert">That trip was not found. <Link to="/grants" className={linkClass}>Back to grants</Link></p>;
   if (data.grants.length === 0) {
     return (
       <div>

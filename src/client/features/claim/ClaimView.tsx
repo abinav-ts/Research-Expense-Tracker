@@ -42,7 +42,7 @@ function Proof({ file, url }: { file: ClaimPayloadFile; url: string }) {
         <figure>
           <figcaption className="mb-1 flex items-center gap-3 text-sm font-semibold text-ink-soft">
             {label} · {file.name}
-            <button type="button" onClick={() => setOpen(false)} className="min-h-11 px-2 underline">Hide</button>
+            <button type="button" onClick={() => setOpen(false)} className={linkClass}>Hide</button>
           </figcaption>
           {file.mime === 'text/plain' && <pre className="overflow-x-auto rounded-lg border border-line bg-ground p-3 text-sm whitespace-pre-wrap" data-testid="claim-proof-text">{failed ? 'This file could not be loaded.' : (text ?? '…')}</pre>}
           {file.mime.startsWith('image/') && (

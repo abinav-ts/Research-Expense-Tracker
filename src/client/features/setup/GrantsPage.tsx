@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
+import { BackLink } from '../../components/BackLink.tsx';
 import { formatDateLabel } from '../../../shared/dates.ts';
-import { btn, btnPrimary, card, h1, h2, mutedText } from '../../components/ui.ts';
+import { btn, btnPrimary, card, h1, h2, linkClass, mutedText } from '../../components/ui.ts';
 import { queries } from '../../db/queries.ts';
 import { loadDemoData } from '../../demo/loadDemo.ts';
 import { attempt } from '../../lib/errors.ts';
@@ -18,6 +19,7 @@ export function GrantsPage() {
 
   return (
     <div>
+      <BackLink to="/" label="start" />
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className={`${h1} mr-auto`}>Your grants</h1>
         <Link to="/grants/new" className={btnPrimary}>Add grant</Link>
@@ -30,7 +32,7 @@ export function GrantsPage() {
 
       {needGrant && overview.length === 0 && (
         <p role="status" className="mb-4 rounded-lg border border-line bg-surface p-3 font-semibold">
-          Create a grant first: every trip belongs to a grant. <Link to="/grants/new" className="underline">Add grant</Link>
+          Create a grant first: every trip belongs to a grant. <Link to="/grants/new" className={linkClass}>Add grant</Link>
         </p>
       )}
 
@@ -59,7 +61,7 @@ export function GrantsPage() {
         <ul className="grid gap-4">
           {overview.map(({ grant, tripCount, expenses }) => (
             <li key={grant.id} className={card} data-testid="grant-card">
-              <Link to={`/grants/${grant.id}`} className="font-display text-xl font-semibold underline">{grant.name}</Link>
+              <Link to={`/grants/${grant.id}`} className={`${linkClass} font-display text-xl`}>{grant.name}</Link>
               <p className={`mb-4 text-sm ${mutedText}`}>
                 {grant.sponsor && `${grant.sponsor} · `}{formatDateLabel(grant.startDate)} to {formatDateLabel(grant.endDate)} · {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
               </p>
@@ -69,7 +71,7 @@ export function GrantsPage() {
           ))}
         </ul>
       )}
-      <p className="mt-8"><Link to="/settings" className="font-semibold text-breeze-deep underline">Settings</Link></p>
+      <p className="mt-8"><Link to="/settings" className={linkClass}>Settings</Link></p>
     </div>
   );
 }
