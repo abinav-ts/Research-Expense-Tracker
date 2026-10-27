@@ -87,13 +87,15 @@ export async function loadDemoAndOpenTrip(page: Page) {
 /** Demo trip with every expense matched to its statement debit, so it can be claimed. Lands on the trip page. */
 export async function verifiedDemoTrip(page: Page) {
   await loadDemoAndOpenTrip(page);
+  const trip = page.url();
   await page.getByRole('link', { name: 'Match bank statement' }).click();
   await page.getByLabel('Choose statement file').setInputFiles(new URL('../../fixtures/sample-statement.csv', import.meta.url).pathname);
   await page.getByRole('button', { name: 'Use these columns' }).click();
-  await page.getByRole('button', { name: 'Confirm all 3' }).click();
+  await page.getByRole('button', { name: 'Match all 3' }).click();
   await page.getByTestId('foreign-choice').getByRole('radio').first().check();
   await page.getByTestId('foreign-choice').getByRole('button', { name: 'Use this debit' }).click();
   await expect(page.getByTestId('matched-pair')).toHaveCount(4);
-  await page.getByRole('link', { name: /SampleConf 2026/ }).first().click();
+  await page.getByRole('button', { name: 'Confirm changes' }).click(); // REQ-CSV-12: saves the draft and returns to the trip
+  await expect(page).toHaveURL(trip);
   await expect(page.getByTestId('verified-percent')).toHaveText('100% verified');
 }

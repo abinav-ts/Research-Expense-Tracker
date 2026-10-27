@@ -545,3 +545,50 @@ describe('REQ-CSV-05, REQ-CSV-08: statement pairs and ticked rows in storage', (
     expect(await db.bankProfiles.count()).toBe(0);
   });
 });
+
+describe('REQ-CSV-12: saving a statement draft', () => {
+  const row = (hash: string, debitMinor: number) => ({ line: 1, date: '2026-11-10', narration: `NARR ${hash}`, debitMinor, rowHash: hash });
+  const fields = (payee: string, minor: number) => ({ originalMinor: minor, originalCurrency: 'INR', inrMinor: minor, date: '2026-11-10', payee, paymentMode: 'bank' as const });
+  async function setup() {
+    const { db, repo } = fresh();
+    const grant = await repo.createGrant({ name: 'G', sponsor: '', totalMinor: 10_000_000, utilisedBeforeMinor: 0, startDate: '2026-04-01', endDate: '2027-03-31' });
+    const trip = await repo.createTrip(grant.id, { name: 'T', city: 'C', country: 'X', startDate: '2026-11-10', endDate: '2026-11-14' });
+    return { db, repo, trip };
+  }
+
+  it('REQ-CSV-12: matches, additions, take-backs and removals are all saved in one step', async () => {
+    const { db, repo, trip } = await setup();
+    const a = await repo.addExpense(trip.id, fields('A', 100_00));
+    const b = await repo.addExpense(trip.id, fields('B', 200_00));
+    await repo.confirmStatementPair(b.id, row('rb', 200_00));
+    await repo.addStatementExpenses(trip.id, [{ row: row('rs', 50_00) }]);
+    const added = (await db.expenses.toArray()).find((e) => e.source === 'statement')!;
+    const counts = await repo.applyStatementPlan(trip.id, {
+      links: { [a.id]: row('ra', 101_00) }, unlinks: [b.id], removes: [added.id],
+      adds: { rn: { row: row('rn', 7_00), categoryId: 'meals' } },
+    });
+    expect(counts).toMatchObject({ matches: 1, adds: 1, unlinks: 1, removes: 1 });
+    const all = await db.expenses.toArray();
+    expect(all.find((e) => e.id === a.id)).toMatchObject({ inrMinor: 101_00, inrStatus: 'confirmed', statementRef: { rowHash: 'ra' } });
+    expect(all.find((e) => e.id === b.id)).toMatchObject({ inrMinor: 200_00, inrStatus: 'pending' });
+    expect(all.find((e) => e.id === b.id)!.statementRef).toBeUndefined();
+    expect(all.find((e) => e.id === added.id)).toBeUndefined();
+    expect(all.find((e) => e.source === 'statement')).toMatchObject({ inrMinor: 7_00, categoryId: 'meals', inrStatus: 'confirmed' });
+  });
+
+  it('REQ-CSV-12: if any part of the draft no longer fits, nothing at all is saved', async () => {
+    const { db, repo, trip } = await setup();
+    const a = await repo.addExpense(trip.id, fields('A', 100_00));
+    const before = JSON.stringify(await db.expenses.toArray());
+    await expect(repo.applyStatementPlan(trip.id, { links: { [a.id]: row('ra', 100_00), gone: row('rg', 5) }, unlinks: [], removes: [], adds: { rn: { row: row('rn', 7_00) } } })).rejects.toThrow(/no longer exists. Nothing was saved/);
+    expect(JSON.stringify(await db.expenses.toArray())).toBe(before);
+    expect(await db.expenses.count()).toBe(1);
+  });
+
+  it('REQ-CSV-12: a debit already used by another expense is refused, even when the draft is otherwise fine', async () => {
+    const { repo, trip } = await setup();
+    const a = await repo.addExpense(trip.id, fields('A', 100_00));
+    await repo.addStatementExpenses(trip.id, [{ row: row('r1', 100_00) }]);
+    await expect(repo.applyStatementPlan(trip.id, { links: { [a.id]: row('r1', 100_00) }, unlinks: [], removes: [], adds: {} })).rejects.toThrow(/already used/);
+  });
+});

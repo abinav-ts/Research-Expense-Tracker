@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { currencyExponent } from '../../../shared/currency.ts';
 import { formatDateLabel } from '../../../shared/dates.ts';
 import { formatInr, formatMinor } from '../../../shared/money.ts';
-import { canBeMatched, proposeMatches } from '../../../shared/reconcile.ts';
+import { canBeMatched, type Matches } from '../../../shared/reconcile.ts';
+import { isDraftId, type Plan } from '../../../shared/statement-plan.ts';
 import type { StatementRow } from '../../../shared/statement-map.ts';
 import type { Expense } from '../../../shared/types.ts';
-import { btn, btnPrimary, card, h2, mutedText } from '../../components/ui.ts';
+import { btn, btnPrimary, card, cross, h2, mutedText } from '../../components/ui.ts';
 
 const expenseAmount = (e: Expense) => (e.originalCurrency === 'INR' ? formatInr(e.inrMinor) : `${formatMinor(e.originalMinor, e.originalCurrency, currencyExponent(e.originalCurrency))} (estimated ${formatInr(e.inrMinor)})`);
 
@@ -20,30 +21,38 @@ function Side({ title, name, date, amount }: { title: string; name: string; date
 }
 
 /**
- * REQ-CSV-08: match tracked expenses to statement debits. Automatic proposals are for INR expenses (same amount, within 2 days);
- * foreign ones list candidates to choose from; anything else can be linked by hand. The statement amount always wins.
+ * REQ-CSV-08, REQ-CSV-12: match tracked expenses to statement debits. `expenses` are the trip's expenses as they will be once
+ * the draft is saved, so every list always agrees with the choices made so far, in whatever order. Choosing only changes the
+ * draft; the ✕ on a chosen item takes it back. Automatic proposals are for INR expenses (same amount, within 2 days); foreign
+ * ones list candidates to choose from; anything else can be linked by hand. The statement amount always wins.
  */
-export function ReconcilePanel({ expenses, debits, taken, onConfirm, onUnlink }: {
+export function ReconcilePanel({ expenses, debits, taken, matches, plan, onMatch, onMatchMany, onDismiss, onTakeBack, onRemoveAdded }: {
   expenses: Expense[];
   debits: StatementRow[];
-  /** Rows already used by an expense of the grant. */
+  /** Rows used by an expense (saved or drafted). */
   taken: ReadonlySet<string>;
-  onConfirm: (expenseId: string, row: StatementRow) => Promise<void>;
-  onUnlink: (expenseId: string) => Promise<void>;
+  /** Proposals for the trip's still-open expenses, with the ones the user said "not this one" to already left out. */
+  matches: Matches;
+  plan: Plan;
+  onMatch: (expenseId: string, row: StatementRow) => void;
+  onMatchMany: (pairs: { expenseId: string; row: StatementRow }[]) => void;
+  onDismiss: (expenseId: string) => void;
+  onTakeBack: (expenseId: string) => void;
+  onRemoveAdded: (expenseId: string) => void;
 }) {
-  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const [chosen, setChosen] = useState<Record<string, string>>({});
   const [manual, setManual] = useState<Record<string, string>>({});
   const pending = expenses.filter(canBeMatched);
-  const matches = proposeMatches(expenses, debits, taken);
-  const automatic = matches.automatic.filter((p) => !dismissed.has(p.expenseId));
+  const automatic = matches.automatic;
   const byId = new Map(expenses.map((e) => [e.id, e]));
-  const matched = expenses.filter((e) => e.statementRef && !e.excluded);
+  const matched = expenses.filter((e) => e.statementRef && !e.excluded && e.source !== 'statement');
+  const added = expenses.filter((e) => e.source === 'statement' && !e.excluded);
   const free = debits.filter((r) => !taken.has(r.rowHash));
   const handled = new Set([...automatic.map((p) => p.expenseId), ...matches.foreign.map((f) => f.expenseId)]);
   // Everything still waiting that has no proposal on screen, including proposals the user said no to.
   const byHand = pending.filter((e) => !handled.has(e.id));
   const nothingToDo = automatic.length === 0 && matches.foreign.length === 0 && byHand.length === 0;
+  const unsaved = (e: Expense) => (plan.links[e.id] !== undefined) || isDraftId(e.id);
 
   return (
     <section className={`${card} mb-6`} aria-labelledby="reconcile-heading" data-testid="reconcile-panel">
@@ -55,8 +64,8 @@ export function ReconcilePanel({ expenses, debits, taken, onConfirm, onUnlink }:
       {automatic.length > 0 && (
         <div className="mb-5" data-testid="reconcile-auto">
           <div className="mb-2 flex flex-wrap items-center gap-3">
-            <h3 className="font-semibold">Matches to confirm ({automatic.length})</h3>
-            {automatic.length > 1 && <button type="button" className={btnPrimary} onClick={async () => { for (const p of automatic) await onConfirm(p.expenseId, p.row); }}>Confirm all {automatic.length}</button>}
+            <h3 className="font-semibold">Proposed matches ({automatic.length})</h3>
+            {automatic.length > 1 && <button type="button" className={btnPrimary} onClick={() => onMatchMany(automatic.map((p) => ({ expenseId: p.expenseId, row: p.row })))}>Match all {automatic.length}</button>}
           </div>
           <ul className="grid gap-3">
             {automatic.map((p) => {
@@ -69,8 +78,8 @@ export function ReconcilePanel({ expenses, debits, taken, onConfirm, onUnlink }:
                   </div>
                   <p className="my-2 text-sm text-ink-soft">{p.reason}</p>
                   <div className="flex gap-3">
-                    <button type="button" className={btnPrimary} onClick={() => onConfirm(e.id, p.row)} aria-label={`Confirm ${e.payee} with ${p.row.narration}`}>Confirm</button>
-                    <button type="button" className={btn} onClick={() => setDismissed(new Set([...dismissed, e.id]))}>Not this one</button>
+                    <button type="button" className={btnPrimary} onClick={() => onMatch(e.id, p.row)} aria-label={`Match ${e.payee} with ${p.row.narration}`}>Match</button>
+                    <button type="button" className={btn} onClick={() => onDismiss(e.id)}>Not this one</button>
                   </div>
                 </li>
               );
@@ -102,7 +111,7 @@ export function ReconcilePanel({ expenses, debits, taken, onConfirm, onUnlink }:
                       </label>
                     ))}
                   </fieldset>
-                  <button type="button" className={`${btnPrimary} mt-2`} disabled={!pick} onClick={() => onConfirm(e.id, f.candidates.find((c) => c.row.rowHash === pick)!.row)}>Use this debit</button>
+                  <button type="button" className={`${btnPrimary} mt-2`} disabled={!pick} onClick={() => onMatch(e.id, f.candidates.find((c) => c.row.rowHash === pick)!.row)}>Use this debit</button>
                 </li>
               );
             })}
@@ -126,7 +135,7 @@ export function ReconcilePanel({ expenses, debits, taken, onConfirm, onUnlink }:
                     {free.map((r) => <option key={r.rowHash} value={r.rowHash}>{formatDateLabel(r.date)} · {formatInr(r.debitMinor)} · {r.narration.slice(0, 40)}</option>)}
                   </select>
                   {row && row.debitMinor !== e.inrMinor && <p role="status" className="mt-2 text-sm font-semibold text-state-low">The bank's {formatInr(row.debitMinor)} will be used instead of {formatInr(e.inrMinor)}.</p>}
-                  <button type="button" className={`${btn} mt-2`} disabled={!row} onClick={() => row && onConfirm(e.id, row)}>Link</button>
+                  <button type="button" className={`${btn} mt-2`} disabled={!row} onClick={() => row && onMatch(e.id, row)}>Link</button>
                 </li>
               );
             })}
@@ -137,16 +146,33 @@ export function ReconcilePanel({ expenses, debits, taken, onConfirm, onUnlink }:
       {nothingToDo && pending.length > 0 && <p className={mutedText}>Every tracked expense has been looked at.</p>}
 
       {matched.length > 0 && (
-        <div data-testid="reconcile-matched">
+        <div className="mb-5" data-testid="reconcile-matched">
           <h3 className="mb-2 font-semibold">Matched ({matched.length})</h3>
           <ul className="grid gap-2">
             {matched.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-breeze-deep/60 bg-ground p-2" data-testid="matched-pair">
                 <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                  <span className="block font-semibold">✓ {e.payee}</span>
+                  <span className="block font-semibold">✓ {e.payee}{unsaved(e) && <span className="ml-2 text-sm font-normal text-ink-soft" data-testid="unsaved-tag">not saved yet</span>}</span>
                   <span className="amount block text-sm text-ink-soft">{formatDateLabel(e.statementRef!.date)} · {formatInr(e.inrMinor)} · {e.statementRef!.narration.slice(0, 50)}</span>
                 </span>
-                {e.source !== 'statement' && <button type="button" className={btn} onClick={() => onUnlink(e.id)} aria-label={`Unlink ${e.payee}`}>Unlink</button>}
+                <button type="button" className={cross} onClick={() => onTakeBack(e.id)} aria-label={`Take back the match for ${e.payee}`}><span aria-hidden="true">✕</span></button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {added.length > 0 && (
+        <div data-testid="reconcile-added">
+          <h3 className="mb-2 font-semibold">Added from the statement ({added.length})</h3>
+          <ul className="grid gap-2">
+            {added.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-ground p-2" data-testid="added-row">
+                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                  <span className="block font-semibold">{e.payee}{unsaved(e) && <span className="ml-2 text-sm font-normal text-ink-soft" data-testid="unsaved-tag">not saved yet</span>}</span>
+                  <span className="amount block text-sm text-ink-soft">{formatDateLabel(e.statementRef!.date)} · {formatInr(e.inrMinor)}</span>
+                </span>
+                <button type="button" className={cross} onClick={() => onRemoveAdded(e.id)} aria-label={`Remove ${e.payee} from this trip`}><span aria-hidden="true">✕</span></button>
               </li>
             ))}
           </ul>

@@ -163,7 +163,7 @@ test.describe('REQ-CSV-03: the transaction table', () => {
 
   test('REQ-CSV-03: "Select all shown" ticks only the rows shown and not paired ones; the total follows', async ({ page }) => {
     await openStatement(page);
-    await page.getByRole('button', { name: 'Confirm all 3' }).click(); // pair IRCTC, Uber, hotel so they cannot be ticked
+    await page.getByRole('button', { name: 'Match all 3' }).click(); // pair IRCTC, Uber, hotel so they cannot be ticked
     await expect(page.getByTestId('matched-pair')).toHaveCount(3);
     await page.getByLabel('Search').fill('UPI');
     await page.getByLabel(/Select all \d+ shown/).check();
@@ -175,7 +175,7 @@ test.describe('REQ-CSV-03: the transaction table', () => {
     const paired = page.getByTestId('stmt-row').filter({ has: page.getByTestId('row-owner') });
     await expect(paired).toHaveCount(3);
     for (const row of await paired.all()) await expect(row.locator('input[type=checkbox]')).toBeDisabled();
-    await expect(page.getByTestId('selection-summary')).toContainText(`${ticked} selected`);
+    await expect(page.getByTestId('selection-summary')).toContainText(`${ticked} chosen to add`);
   });
 
   test('REQ-CSV-03: on a phone each row keeps a readable description and the controls are at least 44 px', async ({ page }) => {
@@ -221,14 +221,12 @@ test.describe('REQ-CSV-08: reconcile', () => {
 
   test('REQ-CSV-08: after confirming everything the trip is 100% verified, the balance moved by the foreign difference, and the list regroups', async ({ page }) => {
     await openStatement(page);
-    await page.getByRole('button', { name: 'Confirm all 3' }).click();
+    await page.getByRole('button', { name: 'Match all 3' }).click();
     await page.getByTestId('foreign-choice').getByRole('radio').first().check();
     await page.getByTestId('foreign-choice').getByRole('button', { name: 'Use this debit' }).click();
     await expect(page.getByTestId('matched-pair')).toHaveCount(4);
-    await page.getByRole('link', { name: 'Match bank statement' }).count();
-    await page.goto('/grants');
-    await page.getByRole('link', { name: /DST Sample Grant/ }).click();
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible(); // back on the trip page
     await expect(page.getByTestId('verified-percent')).toHaveText('100% verified');
     await expect(remaining(page)).toHaveText('₹35,779.45 left'); // ₹35,910.00 − ₹130.55
     await expect(page.getByTestId('balance-pending')).toHaveCount(0); // nothing pending any more
@@ -236,16 +234,16 @@ test.describe('REQ-CSV-08: reconcile', () => {
     await expect(page.getByTestId('section-verified').getByTestId('expense-row')).toHaveCount(4);
   });
 
-  test('REQ-CSV-08: "Not this one" hides a proposal and the expense moves to the by-hand list; Unlink returns an expense to pending', async ({ page }) => {
+  test('REQ-CSV-08: "Not this one" hides a proposal and the expense moves to the by-hand list; the ✕ on a match takes it back', async ({ page }) => {
     await openStatement(page);
     await proposals(page).filter({ hasText: 'Uber' }).getByRole('button', { name: 'Not this one' }).click();
     await expect(proposals(page)).toHaveCount(2);
     await expect(page.getByTestId('unpaired-expense').filter({ hasText: 'Uber' })).toBeVisible();
 
-    await proposals(page).filter({ hasText: 'IRCTC' }).getByRole('button', { name: /^Confirm IRCTC/ }).click();
+    await proposals(page).filter({ hasText: 'IRCTC' }).getByRole('button', { name: /^Match IRCTC/ }).click();
     const pair = page.getByTestId('matched-pair').filter({ hasText: 'IRCTC' });
     await expect(pair).toBeVisible();
-    await pair.getByRole('button', { name: 'Unlink IRCTC' }).click();
+    await pair.getByRole('button', { name: 'Take back the match for IRCTC' }).click();
     await expect(page.getByTestId('matched-pair').filter({ hasText: 'IRCTC' })).toHaveCount(0);
     await expect(proposals(page).filter({ hasText: 'IRCTC' })).toHaveCount(1); // proposed again
   });
@@ -270,7 +268,7 @@ test.describe('REQ-CSV-08: reconcile', () => {
 
   test('REQ-CSV-08: a statement row used by one expense is shown as paired and cannot be ticked or used again', async ({ page }) => {
     await openStatement(page);
-    await page.getByRole('button', { name: 'Confirm all 3' }).click();
+    await page.getByRole('button', { name: 'Match all 3' }).click();
     await expect(page.getByTestId('row-owner').filter({ hasText: 'Paired with IRCTC' })).toBeVisible();
     await expect(page.getByTestId('row-owner')).toHaveCount(3);
   });
@@ -293,18 +291,16 @@ test.describe('REQ-CSV-04, REQ-CSV-05: adding other debits', () => {
     await page.getByLabel(/Select all \d+ shown/).check();
   }
 
-  test('REQ-CSV-04, REQ-CSV-05: ticked debits get a category and become verified expenses of the trip; the balance moves at once', async ({ page }) => {
+  test('REQ-CSV-04, REQ-CSV-05, REQ-CSV-12: ticked debits get their own category and become verified expenses only when Confirm changes is pressed; the balance moves then', async ({ page }) => {
     await openStatement(page);
     await tickGroceries(page);
-    await expect(page.getByTestId('selection-summary')).toHaveText('2 selected · ₹2,231.75');
-    await page.getByLabel('Category for all selected rows').selectOption('meals');
-    for (const row of await page.getByTestId('stmt-row').all()) await expect(row.getByLabel(/Category for/)).toHaveValue('meals');
-    await page.getByRole('button', { name: 'Add 2 selected to this trip' }).click();
-    await expect(page.getByTestId('add-result')).toContainText('Added 2 expenses to this trip');
+    await expect(page.getByTestId('selection-summary')).toHaveText('2 chosen to add · ₹2,231.75');
+    await expect(page.getByLabel('Category for all selected rows')).toHaveCount(0); // no bulk category (removed at the owner's request)
+    for (const row of await page.getByTestId('stmt-row').all()) await row.getByLabel(/Category for/).selectOption('meals');
+    await expect(page.getByTestId('plan-summary')).toHaveText('2 debits to add');
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
 
-    await page.goto('/grants');
-    await page.getByRole('link', { name: /DST Sample Grant/ }).click();
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
     const verified = page.getByTestId('section-verified').getByTestId('expense-row');
     await expect(verified).toHaveCount(2);
     await expect(verified.first()).toContainText('UPI-GREEN GROCERS');
@@ -315,9 +311,8 @@ test.describe('REQ-CSV-04, REQ-CSV-05: adding other debits', () => {
   test('REQ-CSV-05: adding the same file again shows those rows as already added and adds nothing', async ({ page }) => {
     await openStatement(page);
     await tickGroceries(page);
-    await page.getByRole('button', { name: 'Add 2 selected to this trip' }).click();
-    await expect(page.getByTestId('add-result')).toBeVisible();
-    await page.reload();
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await page.getByRole('link', { name: 'Match bank statement' }).click();
     await page.getByLabel('Choose statement file').setInputFiles(SAMPLE);
     await page.getByRole('button', { name: 'Show all dates' }).click();
     await page.getByLabel('Search').fill('GREEN GROCERS');
@@ -330,8 +325,8 @@ test.describe('REQ-CSV-04, REQ-CSV-05: adding other debits', () => {
     await openStatement(page);
     await page.getByRole('button', { name: 'Show all dates' }).click();
     await page.getByLabel('Search').fill('IRCTC');
-    await page.getByTestId('stmt-row').first().getByRole('checkbox').check();
-    const row = page.getByTestId('stmt-row').first();
+    const row = page.getByTestId('stmt-row').filter({ hasText: '20 Nov 2026' }); // the 9 Nov one is proposed for the tracked IRCTC expense
+    await row.getByRole('checkbox').check();
     await expect(row.getByLabel(/Category for/)).toHaveValue(''); // nothing applied silently
     await expect(row.getByTestId('row-suggestion')).toContainText('Suggested: Rail / bus');
     await row.getByRole('button', { name: 'Suggested: Rail / bus' }).click();
@@ -348,8 +343,8 @@ test.describe('REQ-CSV-04, REQ-CSV-05: adding other debits', () => {
     await page.getByRole('button', { name: 'Show all dates' }).click();
     await page.getByTestId('stmt-row').first().getByRole('checkbox').check();
     await page.getByTestId('stmt-row').first().getByLabel(/Category for/).selectOption('accommodation');
-    await page.getByRole('button', { name: 'Add 1 selected to this trip' }).click();
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
     await expect(page.getByTestId('verified-percent')).toHaveText('100% verified');
     await expect(page.getByTestId('section-verified').getByTestId('expense-row')).toContainText('HOTEL SAMPLE LISBON');
   });
@@ -365,5 +360,132 @@ test.describe('REQ-CSV-10: the sample statement', () => {
     expect(file.suggestedFilename()).toBe('sample-statement.csv');
     const path = await file.path();
     expect(readFileSync(path!, 'utf8')).toBe(readFileSync(SAMPLE, 'utf8'));
+  });
+});
+
+test.describe('REQ-CSV-12: choices are a draft until the final Confirm', () => {
+  const pairs = (page: Page) => page.getByTestId('matched-pair');
+
+  test('REQ-CSV-12: matching changes nothing that is saved until Confirm changes; leaving any other way discards the draft', async ({ page }) => {
+    await openStatement(page);
+    const trip = page.url();
+    await page.getByRole('button', { name: 'Match all 3' }).click();
+    await expect(page.getByTestId('plan-summary')).toHaveText('3 matches');
+    await expect(page.getByTestId('plan-bar')).toContainText('Leaving this page any other way discards them.');
+    await page.getByRole('link', { name: /Back to SampleConf 2026/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
+    await expect(page.getByTestId('verified-percent')).not.toHaveText('100% verified');
+    await expect(page.getByTestId('section-to-verify').getByTestId('expense-row')).toHaveCount(4); // still all pending
+    expect(trip).toContain('/statement');
+  });
+
+  test('REQ-CSV-12: every drafted match has a ✕; taking it back returns the proposal, and nothing was written', async ({ page }) => {
+    await openStatement(page);
+    await page.getByRole('button', { name: 'Match all 3' }).click();
+    await expect(pairs(page)).toHaveCount(3);
+    await expect(pairs(page).first().getByTestId('unsaved-tag')).toHaveText('not saved yet');
+    await page.getByRole('button', { name: 'Take back the match for Uber' }).click();
+    await expect(pairs(page)).toHaveCount(2);
+    await expect(proposals(page).filter({ hasText: 'Uber' })).toHaveCount(1); // asked again
+    await expect(page.getByTestId('plan-summary')).toHaveText('2 matches');
+    await page.getByRole('button', { name: 'Take back the match for IRCTC' }).click();
+    await page.getByRole('button', { name: 'Take back the match for HOTEL SAMPLE' }).click();
+    await expect(page.getByTestId('plan-summary')).toHaveText('No changes yet.');
+    await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+  });
+
+  test('REQ-CSV-12: a saved match can be taken back later with its ✕, drafted until Confirm, and the expense is pending again', async ({ page }) => {
+    await openStatement(page);
+    await page.getByRole('button', { name: 'Match all 3' }).click();
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await expect(page.getByTestId('verified-percent')).toBeVisible();
+    await page.getByRole('link', { name: 'Match bank statement' }).click();
+    await page.getByLabel('Choose statement file').setInputFiles(SAMPLE); // same bank: no questions
+    await expect(pairs(page)).toHaveCount(3);
+    await expect(pairs(page).first().getByTestId('unsaved-tag')).toHaveCount(0); // these are saved
+    await pairs(page).filter({ hasText: 'IRCTC' }).getByRole('button', { name: 'Take back the match for IRCTC' }).click();
+    await expect(page.getByTestId('plan-summary')).toHaveText('1 match to take back');
+    await expect(proposals(page).filter({ hasText: 'IRCTC' })).toHaveCount(1); // proposed again at once
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await expect(page.getByTestId('section-to-verify').getByTestId('expense-row').filter({ hasText: 'IRCTC' })).toBeVisible();
+    await expect(page.getByTestId('section-verified').getByTestId('expense-row')).toHaveCount(2); // Uber and the hotel
+  });
+
+  test('REQ-CSV-12: a debit proposed for a tracked expense cannot be ticked as a second expense; Link answers the proposal from the table', async ({ page }) => {
+    await openStatement(page);
+    await page.getByRole('button', { name: 'Show all dates' }).click();
+    await page.getByLabel('Search').fill('UBER');
+    const row = page.getByTestId('stmt-row').first();
+    await expect(row.getByRole('checkbox')).toBeDisabled();
+    await expect(row.getByTestId('row-proposal')).toContainText('Looks like your “Uber” expense');
+    await row.getByRole('button', { name: /^Link/ }).click();
+    await expect(pairs(page).filter({ hasText: 'Uber' })).toHaveCount(1);
+    await expect(proposals(page).filter({ hasText: 'Uber' })).toHaveCount(0); // the question is gone, whichever way it was answered
+    await expect(row.getByTestId('row-proposal')).toHaveCount(0);
+    await expect(row.getByTestId('row-owner')).toHaveText('✓ Paired with Uber');
+  });
+
+  test('REQ-CSV-12: the order of work does not matter: "Not this one", then ticking the row, leaves the expense honestly unmatched, and the Confirm bar says so', async ({ page }) => {
+    await openStatement(page);
+    await page.getByRole('button', { name: 'Show all dates' }).click();
+    await page.getByLabel('Search').fill('UBER');
+    await page.getByTestId('stmt-row').first().getByRole('button', { name: 'Not this one' }).click();
+    await expect(proposals(page).filter({ hasText: 'Uber' })).toHaveCount(0);
+    await page.getByTestId('stmt-row').first().getByRole('checkbox').check();
+    await expect(page.getByTestId('plan-summary')).toHaveText('1 debit to add');
+    await expect(page.getByTestId('plan-unmatched')).toContainText('4 tracked expenses are still not matched'); // Uber stays pending, with the other three
+    await expect(page.getByTestId('unpaired-expense').filter({ hasText: 'Uber' })).toBeVisible();
+    await expect(page.getByTestId('added-row')).toContainText('UPI-UBER INDIA');
+    await page.getByTestId('added-row').getByRole('button', { name: /^Remove UPI-UBER INDIA/ }).click(); // ✕ takes the addition back
+    await expect(page.getByTestId('plan-summary')).toHaveText('No changes yet.');
+    await expect(page.getByTestId('stmt-row').first().getByRole('checkbox')).not.toBeChecked();
+  });
+
+  test('REQ-CSV-12: a ticked row can be unticked, and an added expense that was saved earlier can be removed with its ✕', async ({ page }) => {
+    await openStatement(page);
+    await page.getByRole('button', { name: 'Show all dates' }).click();
+    await page.getByLabel('Search').fill('GREEN GROCERS');
+    await page.getByLabel(/Select all \d+ shown/).check();
+    await page.getByLabel(/Select all \d+ shown/).uncheck();
+    await expect(page.getByTestId('plan-summary')).toHaveText('No changes yet.');
+    await page.getByLabel(/Select all \d+ shown/).check();
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await expect(page.getByTestId('section-verified').getByTestId('expense-row')).toHaveCount(2);
+
+    await page.getByRole('link', { name: 'Match bank statement' }).click();
+    await page.getByLabel('Choose statement file').setInputFiles(SAMPLE);
+    await expect(page.getByTestId('added-row')).toHaveCount(2);
+    await page.getByTestId('added-row').first().getByRole('button', { name: /^Remove UPI-GREEN GROCERS/ }).click();
+    await expect(page.getByTestId('plan-summary')).toHaveText('1 expense to remove');
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await expect(page.getByTestId('section-verified').getByTestId('expense-row')).toHaveCount(1);
+  });
+
+  test('REQ-CSV-12: Done with no changes goes back to the trip; Confirm changes with changes goes there too', async ({ page }) => {
+    await openStatement(page);
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
+  });
+
+  test('REQ-CSV-12: saving is all or nothing: if an expense in the draft was deleted meanwhile, nothing is saved and the screen says why', async ({ page, context }) => {
+    await openStatement(page);
+    await page.getByRole('button', { name: 'Match all 3' }).click();
+    await page.getByRole('button', { name: 'Show all dates' }).click();
+    await page.getByLabel('Search').fill('GREEN GROCERS');
+    await page.getByLabel(/Select all \d+ shown/).check();
+    // meanwhile, in another tab, the tracked IRCTC expense is deleted
+    const other = await context.newPage();
+    await other.goto(page.url().replace(/\/statement$/, ''));
+    await other.getByTestId('expense-row').filter({ hasText: 'IRCTC' }).click();
+    await other.getByRole('button', { name: 'Delete' }).click();
+    await other.getByRole('button', { name: 'Delete expense' }).click();
+    await expect(other.getByTestId('expense-row').filter({ hasText: 'IRCTC' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Confirm changes' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'no longer exists. Nothing was saved' })).toBeVisible();
+    await expect(page.getByTestId('plan-summary')).toHaveText('3 matches · 2 debits to add'); // the draft is kept
+    await other.reload();
+    await expect(other.getByTestId('section-verified').getByTestId('expense-row')).toHaveCount(0); // not even the groceries were saved
+    await expect(other.getByTestId('expense-row')).toHaveCount(3); // Uber, the hotel and the € registration are untouched
   });
 });

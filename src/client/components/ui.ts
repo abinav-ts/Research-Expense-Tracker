@@ -10,3 +10,5 @@ export const h1 = 'font-display text-[28px] leading-[34px] font-bold';
 export const h2 = 'font-display text-xl leading-[26px] font-semibold';
 export const mutedText = 'text-ink-soft';
 export const chip = 'inline-flex items-center rounded-full border border-ink-soft px-2 py-0.5 text-sm text-ink-soft';
+// REQ-CSV-12: the small ✕ that takes a drafted choice back (at least 44 px square).
+export const cross = 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-ink-soft bg-surface text-lg font-semibold text-ink hover:border-state-over hover:text-state-over';

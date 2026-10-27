@@ -44,15 +44,15 @@ Acceptance:
 - At 360 px wide each row is readable: narration on its own line, amount and checkbox below (no vertical text).
 Tests: tests/unit/statement-filter.test.ts, tests/e2e/statement.smoke.test.ts
 
-### REQ-CSV-04 — Assign category (bulk) [MUST] [built]
+### REQ-CSV-04 — Assign category (per row) [MUST] [built]
 Acceptance:
-- With rows ticked, one category choice applies to all of them; each ticked row can also be changed alone. The category suggestion (REQ-CAP-14) is offered per row from its narration, and applied only when the user taps it.
+- Each ticked row has its own category choice. There is no "one category for all" control (removed at the owner's request, v0.6.5). The category suggestion (REQ-CAP-14) is offered per row from its narration, and applied only when the user taps it.
 - Rows without a category can still be added; they are flagged REQ-RULE-12.
 Tests: tests/e2e/statement.smoke.test.ts
 
 ### REQ-CSV-05 — Ticked rows become expenses and a ClaimDraft [MUST] [built]
 Acceptance:
-- "Add N selected to this trip" creates one expense per ticked row: source "statement", payee = the narration with the bank's boilerplate left as written (editable on the expense page), date = the row's date, amount = the debit, status **confirmed**, payment mode bank, the chosen category, and the row's `StatementRef`. The balance changes at once (REQ-BAL-06).
+- "Add N selected" puts the ticked rows in the plan (REQ-CSV-12); when the plan is confirmed it creates one expense per ticked row: source "statement", payee = the narration with the bank's boilerplate left as written (editable on the expense page), date = the row's date, amount = the debit, status **confirmed**, payment mode bank, the chosen category, and the row's `StatementRef`. The balance changes at once (REQ-BAL-06).
 - A row can only be added once: adding the same file again shows those rows as "Already added" (matched by row fingerprint).
 - `buildClaimDraft(grant, trip, expenses)` (REQ-RULE-01) turns the trip's non-excluded expenses into one `ClaimDraft`; each item carries its statement line (REQ-CLM-08). The claim preview, PDF and submission arrive in M3.
 - Works with no tracked expenses at all (statement-only use).
@@ -63,6 +63,18 @@ Not part of M2 (cut-line).
 
 ### REQ-CSV-07 — Attach receipt per row [SHOULD] [draft]
 Not part of M2 (cut-line). Until then a receipt is added from the expense page like any proof.
+
+### REQ-CSV-12 — Choices are a draft until the final Confirm [MUST] [built]
+Every choice on the statement screen (a match, a hand link, a ticked row to add, a removal) is a *draft*. Nothing is saved until the user presses **Confirm changes** at the bottom, which saves everything in one step and returns to the trip page. This lets the user work in any order and take any choice back.
+Acceptance:
+- Each chosen item (a matched pair, a hand link, a row to be added) is listed with a **✕** that takes it back; taking it back returns the expense or row to where it was (the proposal or the list) and nothing is written. Already saved matches (from an earlier visit) and statement-added expenses have a ✕ too: pressing it drafts their removal (an unlink; or removing the expense from the trip), saved only on Confirm.
+- The screen always shows what the world would look like after Confirm (balances of the lists, proposals, which rows are free), computed from the saved data plus the draft, so the order of work does not matter: ticking a row first, linking first, or removing something and linking again all give the same result.
+- A debit that is *proposed* for a tracked expense cannot be ticked for adding; its row says "Looks like your <payee> expense" with a **Link** button, so one payment is never counted twice. "Not this one" on the proposal frees the row to be ticked. A debit already chosen for something shows where it is used.
+- A tracked expense with no match is never blocking: it stays pending and the Confirm bar says how many are still unmatched and that they cannot be claimed until matched.
+- The Confirm bar (sticky at the bottom) counts the draft ("2 matches, 3 debits to add, 1 link to remove") and the button is **Confirm changes**; with an empty draft it reads **Done**. Both go to the trip page.
+- Leaving the screen any other way discards the draft; the screen says so near the bar. Choosing another statement file clears the draft.
+- The saving is atomic: either every change is saved or none, and a row or expense that changed meanwhile gives a message and saves nothing.
+Tests: tests/unit/statement-plan.test.ts, tests/e2e/statement.smoke.test.ts
 
 ### REQ-CSV-08 — Reconcile tracked expenses with statement rows [MUST] [built]
 The system shall match the trip's tracked expenses to statement debit rows, show proposed pairs for confirmation, and on confirmation set `statementRef`, replace `inrMinor` with the debit amount and set `inrStatus = 'confirmed'`. Unmatched tracked expenses and unmatched statement rows both stay visible.
@@ -77,8 +89,8 @@ Acceptance:
 - Given a €89.00 expense estimated at ₹8,455.00 and a debit of ₹8,612.34 inside the window, Then it is offered as a candidate; after the user confirms, the expense shows ₹8,612.34, status confirmed, and the balance changes per REQ-BAL-06.
 - Given two expenses with the same amount and date and one matching row, Then only one pair can be confirmed.
 - **Manual link:** for an expense with no proposal (an INR expense whose amount differs, a foreign one outside the band) the user can pick any unpaired debit by hand; the statement amount is then used and the screen says so.
-- **Unlink** returns the expense to *pending* at its own amount again (the estimate for a foreign expense, the typed amount for an INR one), clears `statementRef`, and frees the row.
-- Pairs are shown side by side (expense: payee, date, amount; debit: narration, date, amount) with the reason ("same amount, 1 day apart" / "₹157.34 more than your estimate"). "Confirm all" confirms every automatic (INR) proposal; foreign ones are confirmed one by one.
+- **Unlink** (the ✕ on a matched pair, REQ-CSV-12) returns the expense to *pending* at its own amount again (the estimate for a foreign expense, the typed amount for an INR one), clears `statementRef`, and frees the row.
+- Pairs are shown side by side (expense: payee, date, amount; debit: narration, date, amount) with the reason ("same amount, 1 day apart" / "₹157.34 more than your estimate"). "Match all" drafts every automatic (INR) proposal; foreign ones are chosen one by one. Choosing is a draft until the final Confirm (REQ-CSV-12).
 - An expense that is already confirmed is never re-proposed. Expenses of other trips are not touched.
 - After confirming, the "unpaired" lists remain: tracked expenses with no debit, and debits with no expense.
 Notes: fallback if this slips is the statement-only path (tick rows, attach proof), but then foreign expenses tracked live cannot be claimed.

@@ -3,6 +3,7 @@
 import { payeeKey } from '../../shared/categoriser.ts';
 import { learnAnchors, type Anchor } from '../../shared/learn.ts';
 import { pairFields, statementRefOf, unlinkFields, canBeMatched } from '../../shared/reconcile.ts';
+import { draftExpense, planCounts, validatePlan, type Plan, type PlanCounts } from '../../shared/statement-plan.ts';
 import type { StatementMapping, StatementRow } from '../../shared/statement-map.ts';
 import { checkFile, TOO_LARGE_NOTE } from '../../shared/files.ts';
 import { defaultRules, normaliseRules } from '../../shared/grant.ts';
@@ -455,6 +456,42 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
         }),
       );
       return { added, skipped: items.length - added };
+    },
+
+    /**
+     * REQ-CSV-12: saves the whole statement draft at once: removals, taken-back matches, new matches and added debits. All of it
+     * or none: the draft is checked against what is saved now inside the same transaction, so a change made in another tab
+     * since the screen was opened gives a message and saves nothing.
+     */
+    async applyStatementPlan(tripId: string, plan: Plan): Promise<PlanCounts> {
+      await write(() =>
+        db.transaction('rw', [db.expenses, db.trips, db.blobs, db.meta], async () => {
+          const trip = await db.trips.get(tripId);
+          if (!trip) throw new StorageError('That trip no longer exists. Nothing was saved.');
+          const tripIds = (await db.trips.where('grantId').equals(trip.grantId).primaryKeys()) as string[];
+          const grantExpenses = await db.expenses.where('tripId').anyOf(tripIds).toArray();
+          const problems = validatePlan(grantExpenses, plan);
+          if (problems.length) throw new StorageError(`${problems[0]} Nothing was saved: reload this page and choose again.`);
+          const stamp = now();
+          const byId = new Map(grantExpenses.map((e) => [e.id, e]));
+          for (const id of plan.removes) {
+            const e = byId.get(id)!;
+            await db.blobs.bulkDelete(e.attachments.map((a) => a.blobKey));
+            await db.expenses.delete(id);
+          }
+          for (const id of plan.unlinks) {
+            const e = byId.get(id)!;
+            const { statementRef: _gone, ...rest } = e;
+            const back = { ...rest, ...unlinkFields(e), updatedAt: stamp };
+            await db.expenses.put(back);
+            byId.set(id, back);
+          }
+          for (const [id, row] of Object.entries(plan.links)) await db.expenses.put({ ...byId.get(id)!, ...pairFields(row), updatedAt: stamp });
+          for (const add of Object.values(plan.adds)) await db.expenses.add({ ...draftExpense(tripId, add), id: newId(), createdAt: stamp, updatedAt: stamp });
+          await db.meta.put({ key: 'lastTripId', value: tripId });
+        }),
+      );
+      return planCounts(plan);
     },
 
     /** Every remembered payee with its remembered category, A to Z (REQ-CAP-17). */

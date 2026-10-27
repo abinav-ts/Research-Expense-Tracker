@@ -259,6 +259,7 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-CSV-09 | Tolerate preamble, bad rows, delimiters | M | 03 |
 | REQ-CSV-11 | Optionally keep a statement on this device (off by default) | C | 03 |
 | REQ-CSV-10 | Bundled synthetic sample CSV | M | 03 |
+| REQ-CSV-12 | Statement choices are drafts with a ✕ to take back; one final Confirm saves them | M | 03 |
 | REQ-RULE-01 | Pure, deterministic `evaluate()` shared client/server | M | 04 |
 | REQ-RULE-02 | DATE_OUT_OF_WINDOW | M | 04 |
 | REQ-RULE-03 | OVER_CATEGORY_CAP | M | 04 |
@@ -411,6 +412,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 ## Changelog
 
 - 2026-10-27 v0.6.2 — Brand finalised: the logo is the Mandelbrot set with the rupee cut out (square mark, 36 px in the header), palette changed to aubergine and magenta, new slogan "Breeze through the grunt work of managing conference grant claims", loading screen animates only the rupee, app icons redrawn. Mark size in REQ-BRAND-01 changed from 40×30 to 36×36 px. No other requirement text changed.
+- 2026-10-27 v0.6.5 — Owner's request, statement screen. New REQ-CSV-12: every choice is a draft with a ✕ to take it back, and one **Confirm changes** at the bottom saves everything and returns to the trip, so the work can be done in any order (a debit proposed for a tracked expense can no longer be ticked as a second expense). REQ-CSV-04: the "one category for all selected" control is removed. Edits REQ-CSV-05 and REQ-CSV-08 wording.
 - 2026-10-27 v0.6.4 — Owner's request, two usability rules added: REQ-NFR-09 (a "Back to …" link on every inner screen) and REQ-NFR-10 (clickable words are boxes, not underlines). The Cowork brand edits (Mandelbrot mark, aubergine and magenta palette, new slogan; recorded as v0.6.2 above) are committed with this change.
 - 2026-10-27 v0.6.3 — Owner's request. The hand-entry button becomes "+ Cash expense" and is cash-only (no "Paid by"), with an optional receipt (up to 5 files) so a cash item can carry its proof; the Inbox is renamed "Expenses with proof" (button on the trip page, "Proofs" in the navigation, address unchanged). Edits REQ-CAP-01 and REQ-CAP-04 wording; REQ-CAP-08 (add a proof to an existing expense) still to build.
 - 2026-10-27 v0.6.1 — M4: Online/Offline indicator in every header (REQ-OFF-07), optional Install button and iOS "Add to Home Screen" hint in Settings (REQ-OFF-01), full offline flow tested (REQ-OFF-02); REQ-DEMO-01 and REQ-NFR-01/05/07/08 marked built with tests. No requirement text changed.
