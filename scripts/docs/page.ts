@@ -126,9 +126,12 @@ export interface PageOptions {
   nav: NavKey;
   body: string;
   wide?: boolean;
+  /** The full stylesheet, to put inside the page so the file works on its own (a copy opened anywhere keeps its look). */
+  standaloneCss?: string;
 }
 
-export function page({ title, description, nav, body, wide }: PageOptions): string {
+export function page({ title, description, nav, body, wide, standaloneCss }: PageOptions): string {
+  const style = standaloneCss ? `<style>${standaloneCss}</style>` : '<link rel="stylesheet" href="assets/site.css">';
   const links = NAV.map((n) => `<a href="${n.href}"${n.key === nav ? ' aria-current="page"' : ''}>${n.label}</a>`).join('');
   return `<!doctype html>
 <html lang="en">
@@ -138,7 +141,7 @@ export function page({ title, description, nav, body, wide }: PageOptions): stri
 <meta name="robots" content="noindex,nofollow">
 <meta name="description" content="${escapeHtml(description)}">
 <title>${escapeHtml(title)}</title>
-<link rel="stylesheet" href="assets/site.css">
+${style}
 </head>
 <body>
 <header class="site"><div class="wrap${wide ? ' wide' : ''}"><span class="site-name">${SITE_NAME}</span><nav aria-label="Pages">${links}</nav></div></header>

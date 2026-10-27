@@ -55,6 +55,14 @@ function buildAssets(): void {
   write(join(assetsDir, 'site.css'), `${tokens}\n${fonts}\n${STYLES}`);
 }
 
+/** site.css with the fonts written into it, so a single HTML file needs nothing next to it. */
+function standaloneCss(): string {
+  return readFileSync(join(assetsDir, 'site.css'), 'utf8').replace(/url\(fonts\/([^)]+\.woff2)\)/g, (_m, name: string) => {
+    const bytes = readFileSync(join(assetsDir, 'fonts', name));
+    return `url(data:font/woff2;base64,${bytes.toString('base64')})`;
+  });
+}
+
 // ---------- viva sheet ----------
 
 function buildViva(): string {
@@ -125,6 +133,7 @@ function buildTranscripts(counts: ScrubCounts): { summary: string[]; suspects: {
       description: 'The two conversations behind ExpRes: the Claude Cowork conversation and the Claude Code session that built the app.',
       nav: 'transcript',
       wide: true,
+      standaloneCss: standaloneCss(),
       body:
         '<h1>Transcripts</h1>' +
         '<p class="lead">The two conversations behind ExpRes, in the order they happened to be used: Claude Cowork, then Claude Code.</p>' +
