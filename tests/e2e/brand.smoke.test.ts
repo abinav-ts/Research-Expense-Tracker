@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { pageTitle, routes } from '../../src/client/app/routes.ts';
 
-const SLOGAN = 'Breeze through grant-handling grunt work';
+const SLOGAN = 'Breeze through the grunt work of managing conference grant claims';
 
 test.describe('REQ-BRAND-01: logo on every page', () => {
   for (const route of routes) {
@@ -23,12 +23,12 @@ test.describe('REQ-BRAND-01: logo on every page', () => {
     });
   }
 
-  test('REQ-BRAND-01: the mark is 40×30 px and the wordmark hides below 320 px wide', async ({ page }) => {
+  test('REQ-BRAND-01: the mark is 36×36 px and the wordmark hides below 320 px wide', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 640 });
     await page.goto('/');
     const box = await page.locator('[data-testid="brand-logo"] img').boundingBox();
-    expect(Math.round(box!.width)).toBe(40);
-    expect(Math.round(box!.height)).toBe(30);
+    expect(Math.round(box!.width)).toBe(36);
+    expect(Math.round(box!.height)).toBe(36);
     await expect(page.locator('[data-testid="brand-logo"] span').first()).toBeVisible();
     const fontSize = await page.locator('[data-testid="brand-logo"] span').first().evaluate((el) => getComputedStyle(el).fontSize);
     expect(fontSize).toBe('26px');

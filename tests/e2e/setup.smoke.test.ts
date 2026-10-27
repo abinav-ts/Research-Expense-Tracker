@@ -113,7 +113,7 @@ test.describe('REQ-SET-06: foreign currency', () => {
   test('REQ-SET-06: €89.00 at the trip default 1 EUR = ₹95.00 is ₹8,455.00, labelled Estimated and Pending', async ({ page }) => {
     await createGrant(page);
     await createTrip(page, 'SampleConf 2026', { currency: 'EUR', rate: '95' });
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Currency').fill('EUR');
     await expect(page.getByLabel('Estimated rate (₹ per 1 unit)')).toHaveValue('95'); // prefilled from the trip
     await page.getByLabel(/^Amount/).fill('89');
@@ -132,7 +132,7 @@ test.describe('REQ-SET-06: foreign currency', () => {
   test('REQ-SET-06: saving a foreign expense with no rate is blocked with "Enter an estimated INR rate"', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Currency').fill('USD');
     await page.getByLabel(/^Amount/).fill('45');
     await page.getByLabel('Paid to (payee)').fill('Amazon');

@@ -166,7 +166,7 @@ function Confirm({ item, next, text }: { item: InboxItem; next?: string | undefi
         actions={
           <>
             <button type="button" className={btnDanger} onClick={() => setDiscarding(true)}>Discard</button>
-            <Link to="/inbox" className={btn}>Back to Inbox</Link>
+            <Link to="/inbox" className={btn}>Back to the list</Link>
           </>
         }
       />
@@ -187,7 +187,7 @@ export function InboxItemPage() {
   const data = useLive(async () => ({ item: (await queries.inboxItem(itemId)) ?? null, list: await queries.inboxList() }), [itemId]);
   const [ocrText, setOcrText] = useState<{ itemId: string; text: string }>();
   if (!data) return <p role="status">Loading…</p>;
-  if (!data.item) return <p role="alert">That Inbox item is gone (it may have been confirmed). <Link to="/inbox" className="underline">Back to Inbox</Link></p>;
+  if (!data.item) return <p role="alert">That proof is gone (it may have been confirmed). <Link to="/inbox" className="underline">Back to the list</Link></p>;
   const { item, list } = data;
   const next = list.find((i) => i.id !== item.id)?.id;
   const isImage = item.kind === 'file' && !!item.mime?.startsWith('image/');

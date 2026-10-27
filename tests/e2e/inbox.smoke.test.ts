@@ -11,7 +11,7 @@ async function withTrip(page: Page) {
 const pasteText = async (page: Page, text: string) => {
   await page.getByRole('button', { name: 'Paste text' }).click();
   await page.getByLabel('Paste an SMS or payment notification').fill(text);
-  await page.getByRole('button', { name: 'Add to Inbox' }).click();
+  await page.getByRole('button', { name: 'Add to list' }).click();
 };
 
 test.describe('REQ-CAP-04: the Inbox list on a phone', () => {

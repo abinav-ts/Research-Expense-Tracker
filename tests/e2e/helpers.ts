@@ -40,7 +40,7 @@ export interface ExpenseInput { amount: string; payee: string; date?: string; cu
 
 /** From a trip page: add an expense by hand and return to the trip page. */
 export async function addExpense(page: Page, e: ExpenseInput) {
-  await page.getByRole('link', { name: 'Add expense' }).click();
+  await page.getByRole('link', { name: '+ Cash expense' }).click();
   if (e.currency) await page.getByLabel('Currency').fill(e.currency);
   await page.getByLabel(/^Amount/).fill(e.amount);
   if (e.rate) await page.getByLabel('Estimated rate (₹ per 1 unit)').fill(e.rate);
@@ -48,6 +48,27 @@ export async function addExpense(page: Page, e: ExpenseInput) {
   await page.getByLabel('Paid to (payee)').fill(e.payee);
   if (e.category) await page.getByLabel('Category').selectOption(e.category);
   await page.getByRole('button', { name: 'Save expense' }).click();
+  await expect(page.getByTestId('expense-row').filter({ hasText: e.payee }).first()).toBeVisible();
+}
+
+/**
+ * From a trip page: add a bank-paid expense the way the app now expects it, as a proof in "+ Expenses with proof"
+ * (a tiny image stands in for the screenshot), then come back to the trip page.
+ */
+export async function addProofExpense(page: Page, e: ExpenseInput) {
+  const tripUrl = page.url();
+  await page.getByRole('link', { name: '+ Expenses with proof' }).first().click();
+  await page.getByLabel('Choose proof files').setInputFiles(pngFile('proof.png'));
+  await page.getByRole('link', { name: 'Review' }).first().click();
+  if (e.currency) await page.getByLabel('Currency').fill(e.currency);
+  await page.getByLabel(/^Amount/).fill(e.amount);
+  if (e.rate) await page.getByLabel('Estimated rate (₹ per 1 unit)').fill(e.rate);
+  await page.getByLabel('Date').fill(e.date ?? '2026-11-12');
+  await page.getByLabel('Paid to (payee)').fill(e.payee);
+  if (e.category) await page.getByLabel('Category').selectOption(e.category);
+  await page.getByRole('button', { name: 'Confirm expense' }).click();
+  await expect(page.getByTestId('inbox-empty')).toBeVisible();
+  await page.goto(tripUrl);
   await expect(page.getByTestId('expense-row').filter({ hasText: e.payee }).first()).toBeVisible();
 }
 

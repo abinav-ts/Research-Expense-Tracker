@@ -28,8 +28,9 @@ describe('REQ-BAL-02: indicator contrast', () => {
     expect(contrast(t['ex-on-dark']!, t['ex-ink']!)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('REQ-BAL-02: the checker is not a rubber stamp (the graphic-only breeze colour fails as text, as the brand notes say)', () => {
-    expect(contrast(t['ex-breeze']!, t['ex-surface']!)).toBeLessThan(4.5);
+  it('REQ-BAL-02: the checker is not a rubber stamp (a pale tint fails as text, and the accent colour clears the 3:1 graphics bar)', () => {
+    expect(contrast(t['ex-line']!, t['ex-surface']!)).toBeLessThan(4.5);
+    expect(contrast(t['ex-breeze']!, t['ex-surface']!)).toBeGreaterThanOrEqual(3);
     expect(readFileSync(join(import.meta.dirname, '../../brand/tokens.css'), 'utf8')).toContain('--ex-state-low');
   });
 });

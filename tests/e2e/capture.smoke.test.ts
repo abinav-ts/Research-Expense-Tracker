@@ -16,7 +16,7 @@ test.describe('REQ-CAP-01: manual add expense', () => {
   test('REQ-CAP-01: 0, -5 and abc are rejected inline with nothing saved; amount, date and payee are required', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     for (const bad of ['0', '-5', 'abc']) {
       await page.getByLabel(/^Amount/).fill(bad);
       await page.getByRole('button', { name: 'Save expense' }).click();
@@ -33,7 +33,7 @@ test.describe('REQ-CAP-01: manual add expense', () => {
   test('REQ-CAP-01: a date after today saves, with a non-blocking warning', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Date').fill('2099-01-01');
     await expect(page.getByText('This date is in the future')).toBeVisible();
     await page.getByLabel(/^Amount/).fill('100');
@@ -80,7 +80,7 @@ test.describe('REQ-CAP-14: category suggestion', () => {
   test('REQ-CAP-14: IRCTC suggests Rail / bus as a chip, applies nothing until tapped, and the choice is remembered', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Paid to (payee)').fill('IRCTC');
     const chips = page.getByTestId('category-suggestions');
     await expect(chips.getByRole('button', { name: 'Rail / bus' })).toBeVisible();
@@ -92,7 +92,7 @@ test.describe('REQ-CAP-14: category suggestion', () => {
     await expect(page.getByTestId('expense-row')).toContainText('Rail / bus');
 
     // Next time the same payee is pre-selected; a person's name gets no suggestion.
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Paid to (payee)').fill('irctc');
     await expect(page.getByLabel('Category')).toHaveValue('rail_bus');
     await expect(page.getByTestId('category-remembered')).toBeVisible();
@@ -104,7 +104,7 @@ test.describe('REQ-CAP-14: category suggestion', () => {
   test('REQ-CAP-14: an aggregator like MakeMyTrip offers two candidate chips and chooses neither', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Paid to (payee)').fill('MakeMyTrip');
     await expect(page.getByTestId('category-suggestions').getByRole('button')).toHaveCount(2);
     await expect(page.getByLabel('Category')).toHaveValue('');
@@ -115,7 +115,7 @@ test.describe('REQ-RULE-02: date outside the trip window', () => {
   test('REQ-RULE-02: a date outside the trip ± buffer shows a warning while typing, still saves, and the row is flagged', async ({ page }) => {
     await createGrant(page);
     await createTrip(page); // 10–14 Nov 2026, buffer 2 days → allowed 8–16 Nov
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Date').fill('2026-11-08');
     await expect(page.getByTestId('date-window-warning')).toHaveCount(0);
     await page.getByLabel('Date').fill('2026-11-07');

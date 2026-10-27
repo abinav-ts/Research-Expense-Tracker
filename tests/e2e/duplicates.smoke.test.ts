@@ -18,7 +18,7 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
     await createTrip(page);
     await addExpense(page, { amount: '560', payee: 'Blossom Book House' });
 
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await fillExpense(page, { amount: '560.00', payee: 'blossom BOOK house' });
     await page.getByRole('button', { name: 'Save expense' }).click();
     await expect(warning(page)).toContainText('Looks like a duplicate of Blossom Book House ₹560.00 on 12 Nov 2026 (the same amount, date and payee)');
@@ -27,7 +27,7 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
     await page.getByRole('button', { name: 'Discard' }).click();
     await expect(page.getByTestId('expense-row')).toHaveCount(1);
 
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await fillExpense(page, { amount: '560', payee: 'Blossom Book House' });
     await page.getByRole('button', { name: 'Save expense' }).click();
     await page.getByRole('button', { name: 'Save anyway' }).click();
@@ -37,12 +37,12 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
   test('REQ-CAP-07: the same reference warns even when amount, date and payee differ', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await fillExpense(page, { amount: '100', payee: 'Shop A', reference: 'INV-4471' });
     await page.getByRole('button', { name: 'Save expense' }).click();
     await expect(page.getByTestId('expense-row')).toHaveCount(1);
 
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await fillExpense(page, { amount: '999', payee: 'Shop B', date: '2026-11-13', reference: 'inv-4471' });
     await page.getByRole('button', { name: 'Save expense' }).click();
     await expect(warning(page)).toContainText('(the same reference number)');
@@ -94,7 +94,7 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
     for (let round = 0; round < 2; round++) {
       await page.getByRole('button', { name: 'Paste text' }).click();
       await page.getByLabel('Paste an SMS or payment notification').fill('Rs 2399 spent@ ABDUSROLLS on 12NOV26 Ref 34567');
-      await page.getByRole('button', { name: 'Add to Inbox' }).click();
+      await page.getByRole('button', { name: 'Add to list' }).click();
     }
     await expect(page.getByTestId('inbox-item')).toHaveCount(2);
     await page.getByRole('link', { name: 'Review' }).first().click();
@@ -114,7 +114,7 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
     await addExpense(page, { amount: '560', payee: 'Blossom Book House' });
     await page.getByRole('link', { name: 'DST Sample Grant' }).click();
     await createTrip(page, 'Second Conf');
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await fillExpense(page, { amount: '560', payee: 'Blossom Book House' });
     await page.getByRole('button', { name: 'Save expense' }).click();
     await expect(warning(page)).toContainText('Looks like a duplicate of Blossom Book House');
@@ -148,7 +148,7 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
     await createGrant(page);
     await createTrip(page);
     await addExpense(page, { amount: '560', payee: 'Blossom Book House' });
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await fillExpense(page, { amount: '560', payee: 'Blossom Book House' });
     await page.getByRole('button', { name: 'Save expense' }).click();
     await expect(warning(page)).toHaveClass(/border-state-low/);

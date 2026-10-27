@@ -1,6 +1,6 @@
 # ExpRes — Global Specification
 
-*Breeze through grant-handling grunt work.* (Product name: ExpRes. Slogan appears only on the loading screen, see `specs/07-branding.md`.)
+*Breeze through the grunt work of managing conference grant claims.* (Product name: ExpRes. Slogan appears only on the loading screen, see `specs/07-branding.md`.)
 
 | | |
 |---|---|
@@ -231,10 +231,10 @@ Priority: **M**ust / **S**hould / **C**ould. Status: draft → agreed → built 
 | REQ-BAL-05 | "Balance after this expense" preview on confirm | C | 01 |
 | REQ-BAL-07 | Verified percentage; unverified expenses first, verified ones below in another colour | S | 01 |
 | REQ-BAL-06 | Confirmed vs pending-verification split | M | 01 |
-| REQ-CAP-01 | Manual add expense | M | 02 |
+| REQ-CAP-01 | Cash expense by hand (+ optional receipt) | M | 02 |
 | REQ-CAP-02 | Add proof via picker/camera/files (multi) | M | 02 |
 | REQ-CAP-03 | Receive proof (images, PDFs, text) via OS share sheet | S | 02 |
-| REQ-CAP-04 | Inbox of unconfirmed proofs | M | 02 |
+| REQ-CAP-04 | Expenses with proof (the Inbox): unconfirmed proofs | M | 02 |
 | REQ-CAP-05 | On-device OCR prefill for screenshots (reliable on UPI/SMS-style formats) | M | 02 |
 | REQ-CAP-06 | Trip expense list: group, edit, delete, view | M | 02 |
 | REQ-CAP-07 | Duplicate detection | S | 02 |
@@ -395,7 +395,7 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 | D-3 | (Optional, after the demo works) Which UPI/banking apps and card-alert SMS formats do you use? Typing out the text of 3–5 messages/screens with names and numbers replaced is enough to tune the parser (do not commit real ones) | Generic patterns: ₹ amount, date, "Paid to", UTR/Txn ID, card-SMS "INR x spent on card … at MERCHANT"; the demo uses synthetic fixtures |
 | D-4 | What does your real grant authority require in a claim (fields, sanction number, declaration wording)? | Generic wording in REQ-CLM-03 |
 | D-5 | Reviewer access: link only, or link + passcode | Link only |
-| D-6 | ~~App name~~ **Resolved 2026-10-25:** ExpRes, slogan "Breeze through grant-handling grunt work" (loading screen only) | — |
+| D-6 | ~~App name~~ **Resolved 2026-10-25:** ExpRes, slogan "Breeze through the grunt work of managing conference grant claims" (loading screen only) | — |
 | D-7 | ~~Deadline and deliverables~~ **Resolved 2026-10-25:** final deploy by Mon 2026-10-26 22:00 IST; deliverable = the working app passing the demo runthrough (§1) | — |
 | D-8 | Must every bank-paid expense (INR too) be matched to a statement row before it is claimed? | **Yes (applied in v0.3):** the statement debit is the claimed amount; cash items are allowed with a warning + justification. Say if you want proof-alone for INR instead |
 | D-9 | ~~Proof types~~ **Resolved 2026-10-25:** the authority accepts card SMS/notification screenshots and invoices; the reviewer sees the proof type | — |
@@ -406,6 +406,8 @@ See `PLAN.md` (M0 skeleton+deploy → M1 setup & live tracking → M1b share tar
 
 ## Changelog
 
+- 2026-10-27 v0.6.2 — Brand finalised: the logo is the Mandelbrot set with the rupee cut out (square mark, 36 px in the header), palette changed to aubergine and magenta, new slogan "Breeze through the grunt work of managing conference grant claims", loading screen animates only the rupee, app icons redrawn. Mark size in REQ-BRAND-01 changed from 40×30 to 36×36 px. No other requirement text changed.
+- 2026-10-27 v0.6.3 — Owner's request. The hand-entry button becomes "+ Cash expense" and is cash-only (no "Paid by"), with an optional receipt (up to 5 files) so a cash item can carry its proof; the Inbox is renamed "Expenses with proof" (button on the trip page, "Proofs" in the navigation, address unchanged). Edits REQ-CAP-01 and REQ-CAP-04 wording; REQ-CAP-08 (add a proof to an existing expense) still to build.
 - 2026-10-27 v0.6.1 — M4: Online/Offline indicator in every header (REQ-OFF-07), optional Install button and iOS "Add to Home Screen" hint in Settings (REQ-OFF-01), full offline flow tested (REQ-OFF-02); REQ-DEMO-01 and REQ-NFR-01/05/07/08 marked built with tests. No requirement text changed.
 - 2026-10-26 v0.6.0 — M3 spec drafted and built (`specs/05-claim-and-review.md`): claim preview = reviewer view, PDF on the device, submit with two private links (made on the device, stored as hashes), reviewer decisions with lock, link security, the claim-path privacy checks, the built-in sample claim (decisions stay in the browser); eleven decisions listed for the owner. Built at the owner's instruction before review; changes welcome.
 - 2026-10-26 v0.5.4 — Statement import hardened (REQ-CSV-01/02/09): files are identified from their first bytes (PDF, Excel, pictures get a plain message), UTF-16 and Windows-1252 are decoded, files with no header row or unusual column names are read from their contents, decimal-comma and many currency/Dr-Cr notations are accepted, month-name-first dates added. 35 new unit and 3 new browser tests. One real defect found by the browser tests: a hook placed after an early return crashed the statement page (unit tests could not see it).

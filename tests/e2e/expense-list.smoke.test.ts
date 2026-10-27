@@ -79,6 +79,6 @@ test.describe('REQ-CAP-06: expense list', () => {
     await page.getByLabel('Start date').fill('2026-02-01');
     await page.getByLabel('End date').fill('2026-02-02');
     await page.getByRole('button', { name: 'Create trip' }).click();
-    await expect(page.getByTestId('empty-trip')).toContainText('Add expense');
+    await expect(page.getByTestId('empty-trip')).toContainText('+ Cash expense');
   });
 });

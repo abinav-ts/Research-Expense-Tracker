@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addExpense, createGrant, createTrip, loadDemoAndOpenTrip, remaining } from './helpers.ts';
+import { addExpense, addProofExpense, createGrant, createTrip, loadDemoAndOpenTrip, remaining } from './helpers.ts';
 
 /** Changes what is stored directly (there is no screen for grant rules yet: REQ-SET-04 is later). */
 async function patchStore(page: Page, table: 'grants' | 'expenses', change: (row: Record<string, unknown>, all: Record<string, unknown>[]) => void) {
@@ -32,7 +32,7 @@ test.describe('REQ-RULE-01: flags on the trip screens', () => {
   test('REQ-RULE-01: a row shows at most two chips and "+N more"; the expense page lists every flag with its message', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await addExpense(page, { amount: '500', payee: 'Far Away', date: '2026-10-01' }); // outside dates, no category
+    await addProofExpense(page, { amount: '500', payee: 'Far Away', date: '2026-10-01' }); // a bank-paid proof, outside dates, no category
     const row = page.getByTestId('expense-row');
     await expect(row.locator('[data-testid="flag-chip"]')).toHaveCount(2);
     await row.click();
@@ -133,12 +133,12 @@ test.describe('REQ-RULE-13: cash', () => {
   test('REQ-RULE-13: a cash expense warns that a justification is needed, is not "unverified", and is left out of the verified percentage', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel(/^Amount/).fill('150');
     await page.getByLabel('Date').fill('2026-11-12');
     await page.getByLabel('Paid to (payee)').fill('Street Vendor');
     await page.getByLabel('Category').selectOption('meals');
-    await page.getByLabel('Paid by').selectOption('cash');
+    await expect(page.getByLabel('Paid by')).toHaveCount(0); // the cash form has no such field
     await page.getByRole('button', { name: 'Save expense' }).click();
     await expect(chips(page, 'CASH_NOT_IN_STATEMENT')).toContainText('⚠ Paid in cash');
     await expect(page.getByTestId('verified-meter')).toHaveCount(0); // nothing bank-paid to verify

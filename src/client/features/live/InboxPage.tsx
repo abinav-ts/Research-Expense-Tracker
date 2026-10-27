@@ -43,8 +43,8 @@ export function InboxPage() {
 
   return (
     <div>
-      <h1 className={`${h1} mb-2`}>Inbox</h1>
-      <p className="mb-4 text-ink-soft">Proofs waiting to become expenses: payment screenshots, card SMS text, invoices and tickets ({ACCEPTED_TYPES_TEXT}).</p>
+      <h1 className={`${h1} mb-2`}>Expenses with proof</h1>
+      <p className="mb-4 text-ink-soft">Add the proof of a payment: a UPI or card screenshot, SMS text, an invoice or a ticket ({ACCEPTED_TYPES_TEXT}). Each becomes an expense once you review and confirm it. Paid in cash? Use <strong>+ Cash expense</strong> on the trip page.</p>
 
       <input ref={files} type="file" multiple hidden accept={FILE_ACCEPT} aria-label="Choose proof files" onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
       <input ref={camera} type="file" hidden accept="image/*" capture="environment" aria-label="Take a photo of a proof" onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
@@ -67,7 +67,7 @@ export function InboxPage() {
           }}
         >
           <TextAreaField id="paste-text" label="Paste an SMS or payment notification" value={pasted} onChange={setPasted} rows={4} hint="Card numbers and available-limit figures are removed before saving." />
-          <button type="submit" className={btnPrimary}>Add to Inbox</button>
+          <button type="submit" className={btnPrimary}>Add to list</button>
         </form>
       )}
 

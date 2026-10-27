@@ -61,10 +61,10 @@ export function TripPage() {
         </p>
       )}
       <div className="mb-6 flex flex-wrap gap-3">
-        <Link to={`/trips/${trip.id}/expenses/new`} className={btnPrimary}>Add expense</Link>
+        <Link to={`/trips/${trip.id}/expenses/new`} className={btnPrimary}>+ Cash expense</Link>
         <Link to={`/trips/${trip.id}/statement`} className={btn}>Match bank statement</Link>
-        <Link to="/inbox" className={btn}>Open Inbox</Link>
-        {expenses.length > 0 && <Link to={`/trips/${trip.id}/claim`} className={btnPrimary} data-testid="prepare-claim">Prepare claim</Link>}
+        <Link to="/inbox" className={btnPrimary}>+ Expenses with proof</Link>
+        {expenses.length > 0 && <Link to={`/trips/${trip.id}/claim`} className={btn} data-testid="prepare-claim">Prepare claim</Link>}
         <Link to={`/trips/${trip.id}/edit`} className={btn}>Edit trip</Link>
       </div>
 
@@ -84,7 +84,7 @@ export function TripPage() {
 
       {expenses.length === 0 ? (
         <p className={`${card} ${mutedText}`} data-testid="empty-trip">
-          No expenses yet. Choose <strong>Add expense</strong> to type one in, or add a payment screenshot or SMS in the <Link to="/inbox" className="underline">Inbox</Link>.
+          No expenses yet. Choose <strong>+ Cash expense</strong> to type one in, or <Link to="/inbox" className="underline">+ Expenses with proof</Link> to add a payment screenshot, photo or SMS.
         </p>
       ) : (
         <>

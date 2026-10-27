@@ -7,7 +7,7 @@ test.describe('REQ-CAP-17: payee autocomplete and list', () => {
     await createTrip(page);
     await addExpense(page, { amount: '560', payee: 'Blossom Book House' });
     await addExpense(page, { amount: '90', payee: 'Cafe Sample' });
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await expect(page.getByLabel('Paid to (payee)')).toHaveAttribute('list', 'known-payees');
     await expect(page.locator('#known-payees option')).toHaveCount(2);
     const offered = await page.locator('#known-payees option').evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
@@ -43,7 +43,7 @@ test.describe('REQ-CAP-17: payee autocomplete and list', () => {
     await page.getByRole('link', { name: 'DST Sample Grant' }).click();
     await page.getByRole('link', { name: 'SampleConf 2026' }).click();
     await expect(page.getByTestId('expense-row')).toContainText('Blossom Bock House'); // the saved expense is untouched
-    await page.getByRole('link', { name: 'Add expense' }).click();
+    await page.getByRole('link', { name: '+ Cash expense' }).click();
     await expect(page.locator('#known-payees option')).toHaveCount(1);
     const offered = await page.locator('#known-payees option').evaluateAll((o) => o.map((x) => (x as HTMLOptionElement).value));
     expect(offered).toEqual(['Blossom Book House']);

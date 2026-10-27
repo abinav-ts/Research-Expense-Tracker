@@ -367,7 +367,7 @@ export function createRepo(db: ExpResDb, options: RepoOptions = {}) {
     /** `learnText`: the text the form was filled from (pasted SMS or text read from the image), used only to learn its layout. */
     async confirmInboxItem(itemId: string, tripId: string, fields: ExpenseFields, learnText?: string): Promise<Expense> {
       const item = await db.inbox.get(itemId);
-      if (!item) throw new StorageError('That Inbox item no longer exists.');
+      if (!item) throw new StorageError('That proof is no longer in the list.');
       const proofType: ProofType = item.proofType ?? (item.kind === 'text' ? 'card_alert' : 'other');
       // Hash before opening the transaction: IndexedDB transactions close if we await non-IndexedDB work inside.
       const textBlob = item.kind === 'text' ? new Blob([item.text ?? ''], { type: 'text/plain' }) : undefined;

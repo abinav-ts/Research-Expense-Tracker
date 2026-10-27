@@ -41,6 +41,10 @@ interface Props {
   top?: ReactNode;
   /** Rendered next to the submit button. */
   actions?: ReactNode;
+  /** "cash": this form only makes cash expenses, so there is no "Paid by" field (REQ-CAP-01). */
+  fixedPaymentMode?: 'cash' | undefined;
+  /** Rendered between the fields and the submit button (e.g. the receipt picker). */
+  beforeSubmit?: ReactNode;
 }
 
 const blank = (): ExpenseFormInput => ({
@@ -48,8 +52,8 @@ const blank = (): ExpenseFormInput => ({
 });
 
 /** REQ-CAP-01 form, shared by manual add, expense detail and the Inbox confirm screen. */
-export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggestionsKey, knownPayees, existing, proofHashes, editingId, onDiscard, memory, initial, submitLabel, onSubmit, top, actions }: Props) {
-  const [form, setForm] = useState<ExpenseFormInput>({ ...blank(), ...initial });
+export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggestionsKey, knownPayees, existing, proofHashes, editingId, onDiscard, memory, initial, submitLabel, onSubmit, top, actions, fixedPaymentMode, beforeSubmit }: Props) {
+  const [form, setForm] = useState<ExpenseFormInput>({ ...blank(), ...initial, ...(fixedPaymentMode && { paymentMode: fixedPaymentMode }) });
   const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormInput, string>>>({});
   const [saving, setSaving] = useState(false);
   const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
@@ -200,8 +204,10 @@ export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggesti
         </div>
       )}
 
-      <SelectField id="paymentMode" label="Paid by" value={form.paymentMode} onChange={(v) => set('paymentMode')(v as 'bank' | 'cash')}
-        options={[{ value: 'bank', label: 'Bank, UPI or card' }, { value: 'cash', label: 'Cash' }]} />
+      {!fixedPaymentMode && (
+        <SelectField id="paymentMode" label="Paid by" value={form.paymentMode} onChange={(v) => set('paymentMode')(v as 'bank' | 'cash')}
+          options={[{ value: 'bank', label: 'Bank, UPI or card' }, { value: 'cash', label: 'Cash' }]} />
+      )}
       <TextField id="reference" check={checks.has('reference')} label="Reference (UPI / transaction id, optional)" value={form.reference} onChange={set('reference')} />
       {chips('reference')}
       <TextAreaField id="note" label="Note (optional)" value={form.note} onChange={set('note')} rows={2} />
@@ -217,6 +223,7 @@ export function ExpenseFormFields({ tripRates, tripWindow, suggestions, suggesti
           </div>
         </div>
       )}
+      {beforeSubmit}
       <div className="flex flex-wrap gap-3">
         <button type="submit" className={btnPrimary} disabled={saving}>{submitLabel}</button>
         {actions}

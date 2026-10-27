@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { addExpense, createGrant, createTrip, loadDemoAndOpenTrip, remaining } from './helpers.ts';
+import { addExpense, addProofExpense, createGrant, createTrip, loadDemoAndOpenTrip, remaining } from './helpers.ts';
 
 const SAMPLE = join(import.meta.dirname, '../../fixtures/sample-statement.csv');
 
@@ -252,7 +252,7 @@ test.describe('REQ-CSV-08: reconcile', () => {
 
   test('REQ-CSV-08: an expense with no automatic match can be linked by hand; the bank amount is used and the screen says so', async ({ page }) => {
     await loadDemoAndOpenTrip(page);
-    await addExpense(page, { amount: '2,000', payee: 'Dinner Out', date: '2026-11-15' }); // the statement has ₹2,150.00 on 15 Nov
+    await addProofExpense(page, { amount: '2,000', payee: 'Dinner Out', date: '2026-11-15' }); // the statement has ₹2,150.00 on 15 Nov
     await page.getByRole('link', { name: 'Match bank statement' }).click();
     await page.getByLabel('Choose statement file').setInputFiles(SAMPLE);
     await page.getByRole('button', { name: 'Use these columns' }).click();

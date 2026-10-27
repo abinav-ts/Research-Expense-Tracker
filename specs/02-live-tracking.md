@@ -7,12 +7,13 @@ Conventions: the *Inbox* holds unconfirmed proofs; *confirming* an item creates 
 
 ## Requirements
 
-### REQ-CAP-01 — Manual add expense [MUST] [built]
-The system shall let the user add an expense with original amount and currency (INR by default; for other currencies the estimated rate, REQ-SET-06), date, payee, category, optional note and reference, with or without an attachment.
+### REQ-CAP-01 — Cash expense (add by hand) [MUST] [built]
+The system shall let the user add a **cash** expense by hand (the trip page button is "+ Cash expense") with original amount and currency (INR by default; for other currencies the estimated rate, REQ-SET-06), date, payee, category, optional note and reference, and optionally the receipt. Spending paid by bank, UPI or card enters through "+ Expenses with proof" (REQ-CAP-02/04) or the bank statement (REQ-CSV-05); an existing expense's "Paid by" can still be changed on its detail page.
 Acceptance:
-- Fields: amount (required, > 0), currency (default INR; common list + any 3-letter code), date (required, default today), payee (required, ≤ 80 chars), category (optional at save, required for claiming), payment mode (bank / cash, default bank), note, reference, trip (defaults to the most recently used trip).
+- Fields: amount (required, > 0), currency (default INR; common list + any 3-letter code), date (required, default today), payee (required, ≤ 80 chars), category (optional at save, required for claiming), payment mode (always cash on this form, so there is no "Paid by" field; the field remains on an expense's detail page and in "+ Expenses with proof"), note, reference, trip (defaults to the most recently used trip).
+- **Receipt (optional):** up to 5 files (photo, camera, PDF; same types and HEIC handling as REQ-CAP-02) can be added on the form; they are saved with the expense as proofs of type Invoice, and any one of them satisfies REQ-RULE-06. Adding a proof to an expense that already exists is REQ-CAP-08 (not yet built).
 - Money input accepts `2,450.50`, `2450.5` and `₹ 1,200`; rejects `0`, `-5`, `abc` and more decimals than the currency allows, with an inline message and no save.
-- Given INR ₹2,450.50, When saved, Then `originalMinor` = `inrMinor` = 245050, status `pending`, and the balance drops by ₹2,450.50 immediately.
+- Given INR ₹2,450.50, When saved, Then `originalMinor` = `inrMinor` = 245050, `paymentMode` = cash, status `pending`, and the balance drops by ₹2,450.50 immediately.
 - Given a date after today, Then a non-blocking warning is shown.
 - Given a non-INR currency, Then the trip's default rate is prefilled and editable (REQ-SET-06).
 - Works offline.
@@ -36,8 +37,8 @@ Acceptance: as REQ-OFF-03 (handler behaviour), plus:
 - Given a platform without support (e.g. iOS Safari), Then RET is simply not offered in the share sheet and REQ-CAP-02 / REQ-CAP-13 remain available; the Inbox page shows a one-line hint about them.
 Tests: tests/unit/share-target.test.ts; manual device check
 
-### REQ-CAP-04 — Inbox [MUST] [built]
-The system shall list unconfirmed proofs and let the user tag each with a proof type (UPI screenshot, card alert, invoice, ticket, other); opening one shows it beside an editable expense form; confirming creates the expense and removes the Inbox item; the user can discard an item.
+### REQ-CAP-04 — Expenses with proof (the Inbox) [MUST] [built]
+The screen is called **Expenses with proof** (trip page button "+ Expenses with proof", navigation item "Proofs"; the address stays `/inbox`). The system shall list unconfirmed proofs and let the user tag each with a proof type (UPI screenshot, card alert, invoice, ticket, other); opening one shows it beside an editable expense form; confirming creates the expense and removes the Inbox item; the user can discard an item.
 Acceptance:
 - The Inbox lists items newest first (items added in one import keep their selection order, REQ-CAP-02) with thumbnail (or text snippet), proof type and received time; the nav badge shows the count.
 - Opening an item shows the proof (zoomable on a phone) next to the form (stacked on narrow screens). The trip defaults to the one whose dates include today, else the last used.

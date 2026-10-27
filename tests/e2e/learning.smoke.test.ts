@@ -6,7 +6,7 @@ const fixture = (name: string) => join(import.meta.dirname, '../../fixtures', na
 const pasteText = async (page: Page, text: string) => {
   await page.getByRole('button', { name: 'Paste text' }).click();
   await page.getByLabel('Paste an SMS or payment notification').fill(text);
-  await page.getByRole('button', { name: 'Add to Inbox' }).click();
+  await page.getByRole('button', { name: 'Add to list' }).click();
 };
 const review = (page: Page) => page.getByRole('link', { name: 'Review' }).first().click();
 

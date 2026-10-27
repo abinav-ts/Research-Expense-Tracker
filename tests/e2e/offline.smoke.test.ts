@@ -34,7 +34,7 @@ test.describe('REQ-OFF-02: segments A and B work with the network off', () => {
     await page.goto('/inbox');
     await page.getByRole('button', { name: 'Paste text' }).click();
     await page.getByLabel('Paste an SMS or payment notification').fill(CARD_SMS);
-    await page.getByRole('button', { name: 'Add to Inbox' }).click();
+    await page.getByRole('button', { name: 'Add to list' }).click();
     await expect(page.getByTestId('inbox-item')).toHaveCount(1);
 
     for (const url of requests) expect(new URL(url).origin, url).toBe(ORIGIN);

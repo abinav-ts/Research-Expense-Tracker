@@ -31,7 +31,7 @@ function ResearcherNav() {
     <nav aria-label="Main" className="ml-auto flex items-center gap-1">
       <Link to="/grants" className={navLink}>Grants</Link>
       <Link to="/inbox" className={navLink}>
-        Inbox
+        Proofs
         {inboxCount > 0 && (
           <span data-testid="inbox-badge" aria-label={`${inboxCount} unconfirmed`} className="ml-1 rounded-full bg-ink px-2 text-sm text-on-dark">{inboxCount}</span>
         )}
