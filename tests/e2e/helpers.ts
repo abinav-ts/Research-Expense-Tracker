@@ -9,18 +9,18 @@ export interface GrantInput { name?: string; total?: string; utilised?: string; 
 /** Creates a grant through the UI and lands on its page. Defaults: ₹1,00,000 total, ₹20,000 utilised. */
 export async function createGrant(page: Page, g: GrantInput = {}) {
   await page.goto('/grants/new');
-  await page.getByLabel('Grant name').fill(g.name ?? 'DST Sample Grant');
+  await page.getByLabel('Grant name').fill(g.name ?? 'RSF Conference Grant');
   await page.getByLabel('Sponsor (optional)').fill('Sample Agency');
   await page.getByLabel('Sanctioned total (₹)').fill(g.total ?? '1,00,000.00');
   await page.getByLabel(/Already utilised/).fill(g.utilised ?? '20,000.00');
   await page.getByLabel('Grant start date').fill(g.start ?? '2026-04-01');
   await page.getByLabel('Grant end date').fill(g.end ?? '2027-03-31');
   await page.getByRole('button', { name: 'Create grant' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: g.name ?? 'DST Sample Grant' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: g.name ?? 'RSF Conference Grant' })).toBeVisible();
 }
 
 /** From a grant page: add a trip and land on the trip page. */
-export async function createTrip(page: Page, name = 'SampleConf 2026', rates?: { currency: string; rate: string }) {
+export async function createTrip(page: Page, name = 'ECM 2026', rates?: { currency: string; rate: string }) {
   await page.getByRole('link', { name: 'Add trip' }).click();
   await page.getByLabel('Conference name').fill(name);
   await page.getByLabel('City').fill('Lisbon');
@@ -79,8 +79,8 @@ export async function loadDemoAndOpenTrip(page: Page) {
   await page.goto('/grants');
   await page.getByRole('button', { name: 'Load demo data' }).click();
   await expect(page.getByTestId('grant-card')).toBeVisible();
-  await page.getByRole('link', { name: /DST Sample Grant/ }).click();
-  await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+  await page.getByRole('link', { name: /RSF Conference Grant/ }).click();
+  await page.getByRole('link', { name: 'ECM 2026' }).click();
   await expect(page.getByTestId('expense-row')).toHaveCount(4);
 }
 

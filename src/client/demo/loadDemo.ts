@@ -11,13 +11,13 @@ const inr = (rupees: number, rest: Omit<ExpenseFields, 'originalMinor' | 'origin
 
 export async function loadDemoData(): Promise<void> {
   const grant = await repo.createGrant({
-    name: 'DST Sample Grant (SAMPLE)', sponsor: 'Sample Agency', totalMinor: 10_000_000, utilisedBeforeMinor: 2_000_000,
+    name: 'RSF Conference Grant', sponsor: 'Sample Agency', totalMinor: 10_000_000, utilisedBeforeMinor: 2_000_000,
     startDate: '2026-04-01', endDate: '2027-03-31',
   });
-  await repo.addGrantDocuments(grant.id, [png(await makeSampleImage('Sanction letter', ['Sample Agency', 'Grant: DST Sample Grant', 'Sanctioned: Rs 1,00,000']), 'sanction-letter-SAMPLE.png')]);
+  await repo.addGrantDocuments(grant.id, [png(await makeSampleImage('Sanction letter', ['Sample Agency', 'Grant: RSF Conference Grant', 'Sanctioned: Rs 1,00,000']), 'sanction-letter-SAMPLE.png')]);
 
   const trip = await repo.createTrip(grant.id, {
-    name: 'SampleConf 2026', city: 'Lisbon', country: 'Portugal', startDate: '2026-11-10', endDate: '2026-11-14',
+    name: 'ECM 2026', city: 'Lisbon', country: 'Portugal', startDate: '2026-11-10', endDate: '2026-11-14',
     fxRatesMicro: { EUR: 95_000_000 },
   });
 

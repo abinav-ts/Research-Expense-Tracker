@@ -21,8 +21,8 @@ const payload: ClaimPayload = claimPayloadSchema.parse({
   preparedAt: '2026-11-16T09:30:00.000Z',
   claimant: { name: 'Asha Sample', email: 'asha@example.org', employeeId: 'SAMPLE-001' },
   declaration: DECLARATION_TEXT,
-  grant: { name: 'DST Sample Grant (SAMPLE)', sponsor: 'Sample Agency', startDate: '2026-04-01', endDate: '2027-03-31' },
-  trip: { name: 'SampleConf 2026', city: 'Lisbon', country: 'Portugal', startDate: '2026-11-10', endDate: '2026-11-14' },
+  grant: { name: 'RSF Conference Grant', sponsor: 'Sample Agency', startDate: '2026-04-01', endDate: '2027-03-31' },
+  trip: { name: 'ECM 2026', city: 'Lisbon', country: 'Portugal', startDate: '2026-11-10', endDate: '2026-11-14' },
   position: { sanctionedMinor: 10_000_000, usedBeforeMinor: 2_000_000, otherTripsMinor: 0, thisClaimMinor: 4_452_055, leftMinor: 10_000_000 - 2_000_000 - 4_452_055 },
   files: [
     { id: 'f-upi', name: 'upi-SMPL000000001.png', mime: 'image/png', kind: 'proof', proofType: 'upi_screenshot' },

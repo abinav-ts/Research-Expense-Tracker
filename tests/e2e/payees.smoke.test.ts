@@ -40,8 +40,8 @@ test.describe('REQ-CAP-17: payee autocomplete and list', () => {
     await expect(page.getByTestId('payee-name')).toHaveText('Blossom Book House');
 
     await page.goto('/grants');
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
+    await page.getByRole('link', { name: 'ECM 2026' }).click();
     await expect(page.getByTestId('expense-row')).toContainText('Blossom Bock House'); // the saved expense is untouched
     await page.getByRole('link', { name: '+ Cash expense' }).click();
     await expect(page.locator('#known-payees option')).toHaveCount(1);

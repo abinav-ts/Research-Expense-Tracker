@@ -228,9 +228,9 @@ test.describe('REQ-CAP-04: Inbox confirm and discard', () => {
     await expect(page.getByTestId('inbox-badge')).toHaveCount(0);
 
     await page.getByRole('link', { name: 'Grants' }).click();
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
     await expect(remaining(page)).toHaveText('₹76,350.00 left'); // 80,000 − 1,200 (screenshot) − 2,450 (SMS)
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await page.getByRole('link', { name: 'ECM 2026' }).click();
     await expect(page.getByTestId('expense-row')).toHaveCount(2);
     await page.getByTestId('expense-row').filter({ hasText: 'Ramesh Stores' }).click();
     await expect(page.getByTestId('proof-view')).toContainText('UPI screenshot');
@@ -260,7 +260,7 @@ test.describe('REQ-CAP-04: Inbox confirm and discard', () => {
   test('REQ-CAP-04: the trip defaults to the one whose dates include today, else the last used', async ({ page }) => {
     await createGrant(page);
     await createTrip(page, 'First Conf');
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
     await createTrip(page, 'Second Conf'); // last used
     await page.goto('/inbox');
     await page.getByLabel('Choose proof files').setInputFiles(pngFile('x.png'));

@@ -226,7 +226,7 @@ test.describe('REQ-CSV-08: reconcile', () => {
     await page.getByTestId('foreign-choice').getByRole('button', { name: 'Use this debit' }).click();
     await expect(page.getByTestId('matched-pair')).toHaveCount(4);
     await page.getByRole('button', { name: 'Confirm changes' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible(); // back on the trip page
+    await expect(page.getByRole('heading', { level: 1, name: 'ECM 2026' })).toBeVisible(); // back on the trip page
     await expect(page.getByTestId('verified-percent')).toHaveText('100% verified');
     await expect(remaining(page)).toHaveText('₹35,779.45 left'); // ₹35,910.00 − ₹130.55
     await expect(page.getByTestId('balance-pending')).toHaveCount(0); // nothing pending any more
@@ -300,7 +300,7 @@ test.describe('REQ-CSV-04, REQ-CSV-05: adding other debits', () => {
     await expect(page.getByTestId('plan-summary')).toHaveText('2 debits to add');
     await page.getByRole('button', { name: 'Confirm changes' }).click();
 
-    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'ECM 2026' })).toBeVisible();
     const verified = page.getByTestId('section-verified').getByTestId('expense-row');
     await expect(verified).toHaveCount(2);
     await expect(verified.first()).toContainText('UPI-GREEN GROCERS');
@@ -344,7 +344,7 @@ test.describe('REQ-CSV-04, REQ-CSV-05: adding other debits', () => {
     await page.getByTestId('stmt-row').first().getByRole('checkbox').check();
     await page.getByTestId('stmt-row').first().getByLabel(/Category for/).selectOption('accommodation');
     await page.getByRole('button', { name: 'Confirm changes' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'ECM 2026' })).toBeVisible();
     await expect(page.getByTestId('verified-percent')).toHaveText('100% verified');
     await expect(page.getByTestId('section-verified').getByTestId('expense-row')).toContainText('HOTEL SAMPLE LISBON');
   });
@@ -372,8 +372,8 @@ test.describe('REQ-CSV-12: choices are a draft until the final Confirm', () => {
     await page.getByRole('button', { name: 'Match all 3' }).click();
     await expect(page.getByTestId('plan-summary')).toHaveText('3 matches');
     await expect(page.getByTestId('plan-bar')).toContainText('Leaving this page any other way discards them.');
-    await page.getByRole('link', { name: /Back to SampleConf 2026/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
+    await page.getByRole('link', { name: /Back to ECM 2026/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'ECM 2026' })).toBeVisible();
     await expect(page.getByTestId('verified-percent')).not.toHaveText('100% verified');
     await expect(page.getByTestId('section-to-verify').getByTestId('expense-row')).toHaveCount(4); // still all pending
     expect(trip).toContain('/statement');
@@ -464,7 +464,7 @@ test.describe('REQ-CSV-12: choices are a draft until the final Confirm', () => {
   test('REQ-CSV-12: Done with no changes goes back to the trip; Confirm changes with changes goes there too', async ({ page }) => {
     await openStatement(page);
     await page.getByRole('button', { name: 'Done' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'SampleConf 2026' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'ECM 2026' })).toBeVisible();
   });
 
   test('REQ-CSV-12: saving is all or nothing: if an expense in the draft was deleted meanwhile, nothing is saved and the screen says why', async ({ page, context }) => {

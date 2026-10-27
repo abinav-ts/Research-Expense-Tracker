@@ -113,7 +113,7 @@ test.describe('REQ-CLM-04: submitting', () => {
     await expect(reviewer.getByTestId('claim-total')).toContainText('₹44,220.55');
 
     // the trip remembers the submission and links to the outcome
-    await page.getByRole('link', { name: 'SampleConf 2026' }).first().click();
+    await page.getByRole('link', { name: 'ECM 2026' }).first().click();
     await expect(page.getByTestId('sent-claims')).toContainText('4 items');
     await page.getByRole('link', { name: 'See the outcome' }).click();
     await expect(page.getByTestId('claim-status-text')).toHaveText('Submitted');
@@ -149,7 +149,7 @@ test.describe('REQ-CLM-02: the PDF', () => {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download claim pack (PDF)' }).click();
     const d = await download;
-    expect(d.suggestedFilename()).toBe('claim-pack-SampleConf-2026.pdf');
+    expect(d.suggestedFilename()).toBe('claim-pack-ECM-2026.pdf');
     const bytes = readFileSync((await d.path())!);
     expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
     expect(bytes.length).toBeGreaterThan(20_000);
@@ -265,8 +265,8 @@ test.describe('REQ-PRIV-04: pictures are made small and plain before they leave'
     await page.getByRole('button', { name: 'Confirm expense' }).click();
     await expect(page.getByTestId('inbox-empty')).toBeVisible();
     await page.goto('/grants');
-    await page.getByRole('link', { name: /DST Sample Grant/ }).click();
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await page.getByRole('link', { name: /RSF Conference Grant/ }).click();
+    await page.getByRole('link', { name: 'ECM 2026' }).click();
     await openClaim(page);
     await fillAndSubmit(page);
     const files = await page.evaluate(() => (window as unknown as { __files: string[] }).__files);

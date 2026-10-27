@@ -88,8 +88,8 @@ test.describe('REQ-CAP-16: learning from corrections', () => {
     await expect(page.getByRole('button', { name: 'Forget what ExpRes has learned' })).toBeDisabled();
 
     await page.goto('/grants');
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
+    await page.getByRole('link', { name: 'ECM 2026' }).click();
     await expect(page.getByTestId('expense-row')).toContainText('Sample Cafe'); // the expense itself is untouched
   });
 

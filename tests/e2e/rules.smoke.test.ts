@@ -186,7 +186,7 @@ test.describe('REQ-BAL-07: verified share and grouping', () => {
     await loadDemoAndOpenTrip(page);
     await page.goto('/grants');
     await expect(page.getByTestId('grant-card').getByTestId('verified-percent')).toHaveText('0% verified');
-    await page.getByRole('link', { name: /DST Sample Grant/ }).click();
+    await page.getByRole('link', { name: /RSF Conference Grant/ }).click();
     await expect(page.getByTestId('verified-percent')).toHaveText('0% verified');
     await expect(remaining(page)).toHaveText('₹35,910.00 left');
   });

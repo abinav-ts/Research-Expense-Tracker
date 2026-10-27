@@ -2,12 +2,12 @@ import { expect, test } from '@playwright/test';
 import { addExpense, createGrant, createTrip, pngFile, remaining } from './helpers.ts';
 
 test.describe('REQ-SET-01: grant CRUD', () => {
-  test('REQ-SET-01: creating "DST Sample Grant" shows ₹80,000.00 remaining on the grants screen and survives a reload', async ({ page }) => {
+  test('REQ-SET-01: creating "RSF Conference Grant" shows ₹80,000.00 remaining on the grants screen and survives a reload', async ({ page }) => {
     await createGrant(page);
     await expect(remaining(page)).toHaveText('₹80,000.00 left');
     await page.goto('/grants');
     const card = page.getByTestId('grant-card');
-    await expect(card).toContainText('DST Sample Grant');
+    await expect(card).toContainText('RSF Conference Grant');
     await expect(card.getByTestId('balance-remaining')).toHaveText('₹80,000.00 left');
     await page.reload();
     await expect(page.getByTestId('grant-card').getByTestId('balance-remaining')).toHaveText('₹80,000.00 left');
@@ -44,7 +44,7 @@ test.describe('REQ-SET-01: grant CRUD', () => {
     await createTrip(page);
     await addExpense(page, { amount: '500', payee: 'Cab One' });
     await addExpense(page, { amount: '700', payee: 'Cab Two' });
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
     await page.locator('#grant-doc-input').setInputFiles(pngFile('letter.png'));
     await expect(page.getByTestId('grant-doc')).toHaveCount(1);
 
@@ -71,12 +71,12 @@ test.describe('REQ-SET-02: trips', () => {
     await expect(page.getByText('Create a grant first')).toBeVisible();
   });
 
-  test('REQ-SET-02: SampleConf 2026 in Lisbon, Portugal is listed under its grant and opens a trip screen', async ({ page }) => {
+  test('REQ-SET-02: ECM 2026 in Lisbon, Portugal is listed under its grant and opens a trip screen', async ({ page }) => {
     await createGrant(page);
     await createTrip(page);
     await expect(page.getByText('Lisbon, Portugal')).toBeVisible();
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
-    await expect(page.getByTestId('trip-card')).toContainText('SampleConf 2026');
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
+    await expect(page.getByTestId('trip-card')).toContainText('ECM 2026');
   });
 
   test('REQ-SET-02: required fields, end-before-start, and a warning (not a block) outside the grant period', async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe('REQ-SET-02: trips', () => {
 test.describe('REQ-SET-06: foreign currency', () => {
   test('REQ-SET-06: €89.00 at the trip default 1 EUR = ₹95.00 is ₹8,455.00, labelled Estimated and Pending', async ({ page }) => {
     await createGrant(page);
-    await createTrip(page, 'SampleConf 2026', { currency: 'EUR', rate: '95' });
+    await createTrip(page, 'ECM 2026', { currency: 'EUR', rate: '95' });
     await page.getByRole('link', { name: '+ Cash expense' }).click();
     await page.getByLabel('Currency').fill('EUR');
     await expect(page.getByLabel('Estimated rate (₹ per 1 unit)')).toHaveValue('95'); // prefilled from the trip
@@ -190,6 +190,6 @@ test.describe('REQ-OFF-06: refreshing a stale device', () => {
     await expect(page.getByTestId('app-version')).toBeVisible();
     await page.evaluate(() => navigator.serviceWorker.ready); // a fresh service worker is installed again
     await page.goto('/grants');
-    await expect(page.getByTestId('grant-card')).toContainText('DST Sample Grant'); // data intact
+    await expect(page.getByTestId('grant-card')).toContainText('RSF Conference Grant'); // data intact
   });
 });

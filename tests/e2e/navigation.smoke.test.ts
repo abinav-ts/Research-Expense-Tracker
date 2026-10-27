@@ -16,18 +16,18 @@ test.describe('REQ-NFR-09: a "Back to …" link on every inner screen', () => {
   test('REQ-NFR-09: grants, grant, trip and the trip tools each go back to where they came from', async ({ page }) => {
     await verifiedDemoTrip(page);
     const trip = page.url();
-    const grantName = 'DST Sample Grant (SAMPLE)';
+    const grantName = 'RSF Conference Grant';
 
     await page.getByRole('link', { name: '+ Cash expense' }).click();
-    await expectBack(page, 'SampleConf 2026', trip);
+    await expectBack(page, 'ECM 2026', trip);
     await page.getByRole('link', { name: 'Match bank statement' }).click();
-    await expectBack(page, 'SampleConf 2026', trip);
+    await expectBack(page, 'ECM 2026', trip);
     await page.getByTestId('prepare-claim').click();
-    await expectBack(page, 'SampleConf 2026', trip);
+    await expectBack(page, 'ECM 2026', trip);
     await page.getByRole('link', { name: 'Edit trip' }).click();
-    await expectBack(page, 'SampleConf 2026', trip);
+    await expectBack(page, 'ECM 2026', trip);
     await page.getByTestId('expense-row').first().click();
-    await expectBack(page, 'SampleConf 2026', trip);
+    await expectBack(page, 'ECM 2026', trip);
 
     await expectBack(page, grantName, /\/grants\/[^/]+$/); // trip -> grant
     await page.getByRole('link', { name: 'Edit grant' }).click();
@@ -47,13 +47,13 @@ test.describe('REQ-NFR-09: a "Back to …" link on every inner screen', () => {
     await createTrip(page);
     const trip = page.url();
     await page.getByRole('link', { name: '+ Expenses with proof' }).first().click();
-    await expectBack(page, 'SampleConf 2026', trip); // the trip last worked on
+    await expectBack(page, 'ECM 2026', trip); // the trip last worked on
     await page.getByRole('link', { name: '+ Expenses with proof' }).first().click();
     await page.getByLabel('Choose proof files').setInputFiles(pngFile('shot.png'));
     await page.getByRole('link', { name: 'Review' }).first().click();
     await expectBack(page, 'Expenses with proof', /\/inbox$/);
     await page.goto('/settings');
-    await expectBack(page, 'SampleConf 2026', trip);
+    await expectBack(page, 'ECM 2026', trip);
   });
 
   test('REQ-NFR-09: the reviewer, owner and landing pages have no back link, and a missing page offers a way out', async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe('REQ-NFR-10: clickable words are boxes', () => {
     const screens: [string, () => Promise<void>][] = [
       ['trip', async () => { await page.goto(trip); }],
       ['grants', async () => { await page.goto('/grants'); }],
-      ['grant', async () => { await page.getByRole('link', { name: /DST Sample Grant/ }).first().click(); }],
+      ['grant', async () => { await page.getByRole('link', { name: /RSF Conference Grant/ }).first().click(); }],
       ['expense', async () => { await page.goto(trip); await page.getByTestId('expense-row').first().click(); }],
       ['cash expense', async () => { await page.goto(trip); await page.getByRole('link', { name: '+ Cash expense' }).click(); }],
       ['statement', async () => { await page.goto(trip); await page.getByRole('link', { name: 'Match bank statement' }).click(); }],

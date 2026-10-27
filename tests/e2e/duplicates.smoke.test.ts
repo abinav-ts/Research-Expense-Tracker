@@ -82,8 +82,8 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
     await warning(page).getByRole('button', { name: 'Save anyway' }).click();
     await expect(page.getByTestId('inbox-empty')).toBeVisible();
     await page.getByRole('link', { name: 'Grants' }).click();
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
-    await page.getByRole('link', { name: 'SampleConf 2026' }).click();
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
+    await page.getByRole('link', { name: 'ECM 2026' }).click();
     await expect(page.getByTestId('expense-row')).toHaveCount(2);
   });
 
@@ -112,7 +112,7 @@ test.describe('REQ-CAP-07: duplicate warning', () => {
     await createGrant(page);
     await createTrip(page, 'First Conf');
     await addExpense(page, { amount: '560', payee: 'Blossom Book House' });
-    await page.getByRole('link', { name: 'DST Sample Grant' }).click();
+    await page.getByRole('link', { name: 'RSF Conference Grant' }).click();
     await createTrip(page, 'Second Conf');
     await page.getByRole('link', { name: '+ Cash expense' }).click();
     await fillExpense(page, { amount: '560', payee: 'Blossom Book House' });
